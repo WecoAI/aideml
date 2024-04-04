@@ -4,7 +4,7 @@ Welcome to the official repository for AIDE, an AI system that can automatically
 ## About AIDE
 AIDE is an AI-powered data science assistant that can autonomously understand task requirements, design, and implement solutions. By leveraging large language models and innovative agent architectures, such as the Solution Space Tree Search algorithm, AIDE has achieved human-level performance on a wide range of data science tasks, outperforming over 50% of human data scientists on Kaggle competitions.
 
-## Gallary
+## Gallery
 | Domain                           | Task                                                                    | Top%        | Solution Link                                                     | Competition Link                                                                                   |
 |:---------------------------------|:------------------------------------------------------------------------|:------------|:------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------|
 | Urban Planning                   | Forecast city bikeshare system usage                                    | 0.05        | [link](examples/bike-sharing-demand.py)                           | [link](https://www.kaggle.com/competitions/bike-sharing-demand/overview)                           |
