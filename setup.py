@@ -8,7 +8,7 @@ with open("requirements.txt", "r") as f:
 
 setup(
     name="aide",
-    version="0.1.0",
+    version="0.1.1",
     author="Weco AI",
     author_email="contact@weco.ai",
     description="Autonomous AI for Data Science and Machine Learning",
@@ -16,7 +16,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/wecoai/aideml",
     packages=find_packages(),
-    package_data={"aide": ["utils/config.yaml", "utils/viz_templates/*", "example_tasks/bitcoin_price/*", "example_tasks/house_prices/*"]},
+    package_data={"aide": ["utils/config.yaml", "utils/viz_templates/*", "example_tasks/bitcoin_price/*", "example_tasks/house_prices/*", "example_tasks/*"]},
     classifiers=[
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
