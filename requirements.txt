@@ -1,0 +1,91 @@
+# AIDE requirements
+black==24.3.0
+funcy==2.0
+humanize==4.8.0
+jsonschema==4.19.2
+numpy==1.26.2
+openai>=1.3.5
+anthropic>=0.20.0
+pandas==2.1.4
+pytest==7.4.3
+requests==2.31.0
+scikit-learn==1.2.2
+rich==13.7.0
+scipy==1.11.4
+dataclasses_json>=0.6.4
+omegaconf>=2.3.0
+loguru==0.7.2
+shutup>=0.2.0
+tqdm==4.66.2
+coolname>=2.2.0
+igraph>=0.11.3
+genson>=1.2.0
+
+# agent requirements (packages that the agent might need)
+torch
+torchvision
+torchaudio
+torchtext
+
+lightgbm
+matplotlib
+seaborn
+
+# tensorflow
+# tensorflow-io
+# tensorflow_hub
+# tf-keras
+# tensorflow_decision_forests
+# keras
+# keras-cv
+# keras-nlp
+
+gensim
+
+scikit-image
+opencv-python
+scipy
+scikit-learn
+biopython
+imbalanced-learn
+h5py
+biopython
+numba
+arrow
+markovify
+imgaug
+scikit-optimize
+plotly
+hyperopt
+bayesian-optimization
+imagecodecs
+hmmlearn
+bayespy
+sklearn-pandas
+tensorpack
+sentencepiece
+librosa
+ipykernel
+ipython
+nbformat
+kornia
+Pillow
+pyparsing
+pytz
+PyYAML
+tqdm
+fastai
+gym
+optuna
+transformers
+datasets==2.1.0
+torchmetrics
+pytorch-lightning
+sympy
+timm
+torchinfo
+pdf2image
+PyPDF
+pyocr
+pyarrow
+xlrd
