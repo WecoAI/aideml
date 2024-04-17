@@ -120,7 +120,7 @@ At its core, Solution Space Tree Search consists of three main components:
 
 By repeatedly applying these steps, AIDE navigates the vast space of possible solutions, progressively refining its approach until it converges on the optimal solution for the given data science problem.
 
-![Tree Search Visualization](https://github.com/WecoAI/AIDE_internal/assets/8918572/daea2488-3e1f-4d64-a555-e4d45ed46e4d)
+![Tree Search Visualization](https://github.com/WecoAI/aideml/assets/8918572/2401529c-b97e-4029-aed2-c3f376f54c3c)
 
 ## Solution Gallery
 
