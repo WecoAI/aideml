@@ -7,7 +7,7 @@ with open("requirements.txt", "r") as f:
     requirements = f.read().splitlines()
 
 setup(
-    name="aide",
+    name="aideml",
     version="0.1.0",
     author="Weco AI",
     author_email="contact@weco.ai",
@@ -16,7 +16,14 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/wecoai/aideml",
     packages=find_packages(),
-    package_data={"aide": ["utils/config.yaml", "utils/viz_templates/*", "example_tasks/bitcoin_price/*", "example_tasks/house_prices/*"]},
+    package_data={
+        "aide": [
+            "utils/config.yaml",
+            "utils/viz_templates/*",
+            "example_tasks/bitcoin_price/*",
+            "example_tasks/house_prices/*",
+        ]
+    },
     classifiers=[
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
@@ -25,8 +32,8 @@ setup(
     python_requires=">=3.10",
     install_requires=requirements,
     entry_points={
-        'console_scripts': [
-            'aide = aide.run:run',
+        "console_scripts": [
+            "aide = aide.run:run",
         ],
     },
 )
