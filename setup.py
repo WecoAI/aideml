@@ -7,14 +7,14 @@ with open("requirements.txt", "r") as f:
     requirements = f.read().splitlines()
 
 setup(
-    name="aideml",
-    version="0.1.0",
+    name="aide",
+    version="0.1.1",
     author="Weco AI",
     author_email="contact@weco.ai",
     description="Autonomous AI for Data Science and Machine Learning",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/wecoai/aideml",
+    url="https://github.com/Wecoai/aideml",
     packages=find_packages(),
     package_data={
         "aide": [
@@ -22,6 +22,7 @@ setup(
             "utils/viz_templates/*",
             "example_tasks/bitcoin_price/*",
             "example_tasks/house_prices/*",
+            "example_tasks/*",
         ]
     },
     classifiers=[
