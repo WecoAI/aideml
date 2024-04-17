@@ -7,7 +7,7 @@ with open("requirements.txt", "r") as f:
     requirements = f.read().splitlines()
 
 setup(
-    name="aide",
+    name="aideml",
     version="0.1.1",
     author="Weco AI",
     author_email="contact@weco.ai",
