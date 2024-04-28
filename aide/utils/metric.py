@@ -38,7 +38,7 @@ class MetricValue(DataClassJsonMixin):
         return comp if self.maximize else not comp  # type: ignore
 
     def __eq__(self, other: Any) -> bool:
-        assert type(self) is type(other)
+        # assert type(self) is type(other)
         return self.value == other.value
 
     def __repr__(self) -> str:
