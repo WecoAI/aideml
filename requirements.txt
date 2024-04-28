@@ -60,7 +60,7 @@ hyperopt
 bayesian-optimization
 imagecodecs
 hmmlearn
-bayespy
+bayespy==0.5.1
 sklearn-pandas
 tensorpack
 sentencepiece
