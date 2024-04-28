@@ -8,7 +8,7 @@ with open("requirements.txt", "r") as f:
 
 setup(
     name="aideml",
-    version="0.1.2",
+    version="0.1.3",
     author="Weco AI",
     author_email="contact@weco.ai",
     description="Autonomous AI for Data Science and Machine Learning",
