@@ -151,7 +151,7 @@ def load_task_desc(cfg: Config):
                 "Ignoring goal and eval args because task description file is provided."
             )
     
-        with open() as f:
+        with open(cfg.desc_file) as f:
             return f.read()
         
     # or generate it from the goal and eval args
