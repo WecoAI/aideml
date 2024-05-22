@@ -221,8 +221,15 @@ class Interpreter:
             msg = "REPL child process failed to start execution"
             logger.critical(msg)
             while not self.result_outq.empty():
-                logger.error(f"REPL output queue dump: {self.result_outq.get()}")
-            raise RuntimeError(msg) from None
+                queue_dump = self.result_outq.get()
+                logger.error(f"REPL output queue dump: {queue_dump[:1000]}")
+            return ExecutionResult(
+                term_out=[msg, queue_dump],
+                exec_time=0,
+                exc_type="RuntimeError",
+                exc_info={},
+                exc_stack=[],
+            )
         assert state[0] == "state:ready", state
         start_time = time.time()
 
@@ -243,10 +250,15 @@ class Interpreter:
                     msg = "REPL child process died unexpectedly"
                     logger.critical(msg)
                     while not self.result_outq.empty():
-                        logger.error(
-                            f"REPL output queue dump: {self.result_outq.get()}"
-                        )
-                    raise RuntimeError(msg) from None
+                        queue_dump = self.result_outq.get()
+                        logger.error(f"REPL output queue dump: {queue_dump[:1000]}")
+                    return ExecutionResult(
+                        term_out=[msg, queue_dump],
+                        exec_time=0,
+                        exc_type="RuntimeError",
+                        exc_info={},
+                        exc_stack=[],
+                    )
 
                 # child is alive and still executing -> check if we should sigint..
                 if self.timeout is None:
