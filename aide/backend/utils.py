@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Callable
 
 import jsonschema
 from dataclasses_json import DataClassJsonMixin
@@ -6,6 +7,22 @@ from dataclasses_json import DataClassJsonMixin
 PromptType = str | dict | list
 FunctionCallType = dict
 OutputType = str | FunctionCallType
+
+import backoff
+
+
+@backoff.on_predicate(
+    wait_gen=backoff.expo,
+    max_value=60,
+    factor=1.5,
+)
+def backoff_create(
+    create_fn: Callable, retry_exceptions: list[Exception], *args, **kwargs
+):
+    try:
+        return create_fn(*args, **kwargs)
+    except retry_exceptions:
+        return False
 
 
 def opt_messages_to_list(
