@@ -60,7 +60,6 @@ def query(
         messages=messages,
         **filtered_kwargs,
     )
-    message = _client.messages.create(messages=messages, **filtered_kwargs)  # type: ignore
     req_time = time.time() - t0
 
     assert len(message.content) == 1 and message.content[0].type == "text"
