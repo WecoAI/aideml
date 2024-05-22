@@ -4,25 +4,34 @@ import json
 import logging
 import time
 
-from .utils import FunctionSpec, OutputType, opt_messages_to_list
-from funcy import notnone, once, retry, select_values
-from openai import OpenAI, RateLimitError
+from aide.backend.utils import (
+    FunctionSpec,
+    OutputType,
+    opt_messages_to_list,
+    backoff_create,
+)
+from funcy import notnone, once, select_values
+import openai
 
 logger = logging.getLogger("aide")
 
-_client: OpenAI = None  # type: ignore
+_client: openai.OpenAI = None  # type: ignore
 
-RATELIMIT_RETRIES = 5
-retry_exp = retry(RATELIMIT_RETRIES, errors=RateLimitError, timeout=lambda a: 2 ** (a + 1))  # type: ignore
+
+OPENAI_TIMEOUT_EXCEPTIONS = [
+    openai.RateLimitError,
+    openai.APIConnectionError,
+    openai.APITimeoutError,
+    openai.InternalServerError,
+]
 
 
 @once
 def _setup_openai_client():
     global _client
-    _client = OpenAI(max_retries=3)
+    _client = openai.OpenAI(max_retries=3)
 
 
-@retry_exp
 def query(
     system_message: str | None,
     user_message: str | None,
@@ -40,7 +49,12 @@ def query(
         filtered_kwargs["tool_choice"] = func_spec.openai_tool_choice_dict
 
     t0 = time.time()
-    completion = _client.chat.completions.create(messages=messages, **filtered_kwargs)  # type: ignore
+    completion = backoff_create(
+        _client.chat.completions.create,
+        OPENAI_TIMEOUT_EXCEPTIONS,
+        messages=messages,
+        **filtered_kwargs,
+    )
     req_time = time.time() - t0
 
     choice = completion.choices[0]

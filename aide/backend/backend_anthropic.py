@@ -1,24 +1,30 @@
 """Backend for Anthropic API."""
 
 import time
+import logging
 
-from anthropic import Anthropic, RateLimitError
-from .utils import FunctionSpec, OutputType, opt_messages_to_list
-from funcy import notnone, once, retry, select_values
+import anthropic
+from .utils import FunctionSpec, OutputType, backoff_create, opt_messages_to_list
+from funcy import notnone, once, select_values
 
-_client: Anthropic = None  # type: ignore
+logger = logging.getLogger("aide")
 
-RATELIMIT_RETRIES = 5
-retry_exp = retry(RATELIMIT_RETRIES, errors=RateLimitError, timeout=lambda a: 2 ** (a + 1))  # type: ignore
+_client: anthropic.Anthropic = None  # type: ignore
+
+ANTHROPIC_TIMEOUT_EXCEPTIONS = (
+    anthropic.RateLimitError,
+    anthropic.APIConnectionError,
+    anthropic.APITimeoutError,
+    anthropic.InternalServerError,
+)
 
 
 @once
 def _setup_anthropic_client():
     global _client
-    _client = Anthropic()
+    _client = anthropic.Anthropic()
 
 
-@retry_exp
 def query(
     system_message: str | None,
     user_message: str | None,
@@ -48,6 +54,12 @@ def query(
     messages = opt_messages_to_list(None, user_message)
 
     t0 = time.time()
+    message = backoff_create(
+        _client.messages.create,
+        ANTHROPIC_TIMEOUT_EXCEPTIONS,
+        messages=messages,
+        **filtered_kwargs,
+    )
     message = _client.messages.create(messages=messages, **filtered_kwargs)  # type: ignore
     req_time = time.time() - t0
 
