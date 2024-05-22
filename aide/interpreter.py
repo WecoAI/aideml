@@ -223,6 +223,7 @@ class Interpreter:
             while not self.result_outq.empty():
                 queue_dump = self.result_outq.get()
                 logger.error(f"REPL output queue dump: {queue_dump[:1000]}")
+            self.cleanup_session()
             return ExecutionResult(
                 term_out=[msg, queue_dump],
                 exec_time=0,
@@ -252,6 +253,7 @@ class Interpreter:
                     while not self.result_outq.empty():
                         queue_dump = self.result_outq.get()
                         logger.error(f"REPL output queue dump: {queue_dump[:1000]}")
+                    self.cleanup_session()
                     return ExecutionResult(
                         term_out=[msg, queue_dump],
                         exec_time=0,
