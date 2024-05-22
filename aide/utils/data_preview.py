@@ -149,5 +149,8 @@ def generate(base_path, include_file_details=True, simple=False):
         return generate(
             base_path, include_file_details=include_file_details, simple=True
         )
+    # if still too long, we truncate
+    if len(result) > 6_000 and simple:
+        return result[:6_000] + "\n... (truncated)"
 
     return result
