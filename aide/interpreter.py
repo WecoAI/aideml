@@ -220,6 +220,7 @@ class Interpreter:
         except queue.Empty:
             msg = "REPL child process failed to start execution"
             logger.critical(msg)
+            queue_dump = ""
             while not self.result_outq.empty():
                 queue_dump = self.result_outq.get()
                 logger.error(f"REPL output queue dump: {queue_dump[:1000]}")
@@ -250,6 +251,7 @@ class Interpreter:
                 if not child_in_overtime and not self.process.is_alive():
                     msg = "REPL child process died unexpectedly"
                     logger.critical(msg)
+                    queue_dump = ""
                     while not self.result_outq.empty():
                         queue_dump = self.result_outq.get()
                         logger.error(f"REPL output queue dump: {queue_dump[:1000]}")
