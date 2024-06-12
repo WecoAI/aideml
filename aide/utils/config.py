@@ -16,11 +16,7 @@ from . import tree_export
 from . import copytree, preproc_data, serialize
 
 shutup.mute_warnings()
-logging.basicConfig(
-    level="WARNING", format="%(message)s", datefmt="[%X]", handlers=[RichHandler()]
-)
 logger = logging.getLogger("aide")
-logger.setLevel(logging.WARNING)
 
 
 """ these dataclasses are just for type hinting, the actual config is in config.yaml """
@@ -68,6 +64,7 @@ class Config(Hashable):
     eval: str | None
 
     log_dir: Path
+    log_level: str
     workspace_dir: Path
 
     preprocess_data: bool

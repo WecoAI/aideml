@@ -12,6 +12,7 @@ from omegaconf import OmegaConf
 from rich.columns import Columns
 from rich.console import Group
 from rich.live import Live
+from rich.logging import RichHandler
 from rich.padding import Padding
 from rich.panel import Panel
 from rich.progress import (
@@ -27,7 +28,6 @@ from rich.status import Status
 from rich.tree import Tree
 from .utils.config import load_task_desc, prep_agent_workspace, save_run, load_cfg
 
-logger = logging.getLogger("aide")
 
 def journal_to_rich_tree(journal: Journal):
     best_node = journal.get_best_node()
@@ -37,7 +37,7 @@ def journal_to_rich_tree(journal: Journal):
             s = "[red]◍ bug"
         else:
             style = "bold " if node is best_node else ""
-            
+
             if node is best_node:
                 s = f"[{style}green]● {node.metric.value:.3f} (best)"
             else:
@@ -52,8 +52,16 @@ def journal_to_rich_tree(journal: Journal):
         append_rec(n, tree)
     return tree
 
+
 def run():
     cfg = load_cfg()
+    logging.basicConfig(
+        level=getattr(logging, cfg.log_level.upper()),
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler()],
+    )
+    logger = logging.getLogger("aide")
     logger.info(f'Starting run "{cfg.exp_name}"')
 
     task_desc = load_task_desc(cfg)
@@ -65,6 +73,7 @@ def run():
     def cleanup():
         if global_step == 0:
             shutil.rmtree(cfg.workspace_dir)
+
     atexit.register(cleanup)
 
     journal = Journal()
@@ -102,7 +111,9 @@ def run():
             f"Agent workspace directory:\n[yellow]▶ {str(cfg.workspace_dir)}",
             f"Experiment log directory:\n[yellow]▶ {str(cfg.log_dir)}",
         ]
-        left = Group(Panel(Text(task_desc_str.strip()), title="Task description"), prog, status)
+        left = Group(
+            Panel(Text(task_desc_str.strip()), title="Task description"), prog, status
+        )
         right = tree
         wide = Group(*file_paths)
 

@@ -8,6 +8,7 @@ goal: null
 eval: null
 
 log_dir: logs
+log_level: INFO
 workspace_dir: workspaces
 
 # whether to unzip any archives in the data directory
