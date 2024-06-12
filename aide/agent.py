@@ -170,8 +170,8 @@ class Agent:
                 # merge all code blocks into a single string
                 return nl_text, code
 
-            print("Plan + code extraction failed, retrying...")
-        print("Final plan + code extraction attempt failed, giving up...")
+            logger.debug("Plan + code extraction failed, retrying...")
+        logger.debug("Final plan + code extraction attempt failed, giving up...")
         return "", completion_text  # type: ignore
 
     def _draft(self) -> Node:
