@@ -64,7 +64,7 @@ class Agent:
 
         # initial drafting
         if len(self.journal.draft_nodes) < search_cfg.num_drafts:
-            logger.debug("[search policy] drafting new node (not enough drafts)")
+            logger.info("[search policy] drafting new node (not enough drafts)")
             return None
 
         # debugging
@@ -76,19 +76,19 @@ class Agent:
                 if (n.is_leaf and n.debug_depth <= search_cfg.max_debug_depth)
             ]
             if debuggable_nodes:
-                logger.debug("[search policy] debugging")
+                logger.info("[search policy] debugging")
                 return random.choice(debuggable_nodes)
-            logger.debug("[search policy] not debugging by chance")
+            logger.info("[search policy] not debugging by chance")
 
         # back to drafting if no nodes to improve
         good_nodes = self.journal.good_nodes
         if not good_nodes:
-            logger.debug("[search policy] drafting new node (no good nodes)")
+            logger.info("[search policy] drafting new node (no good nodes)")
             return None
 
         # greedy
         greedy_node = self.journal.get_best_node()
-        logger.debug("[search policy] greedy node selected")
+        logger.info("[search policy] greedy node selected")
         return greedy_node
 
     @property
@@ -170,8 +170,8 @@ class Agent:
                 # merge all code blocks into a single string
                 return nl_text, code
 
-            logger.debug("Plan + code extraction failed, retrying...")
-        logger.debug("Final plan + code extraction attempt failed, giving up...")
+            logger.info("Plan + code extraction failed, retrying...")
+        logger.info("Final plan + code extraction attempt failed, giving up...")
         return "", completion_text  # type: ignore
 
     def _draft(self) -> Node:
@@ -280,7 +280,7 @@ class Agent:
             self.update_data_preview()
 
         parent_node = self.search_policy()
-        logger.debug(f"Agent is generating code, parent node type: {type(parent_node)}")
+        logger.info(f"Agent is generating code, parent node type: {type(parent_node)}")
 
         if parent_node is None:
             result_node = self._draft()

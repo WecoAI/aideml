@@ -129,11 +129,7 @@ def run():
             subtitle="Press [b]Ctrl+C[/b] to stop the run",
         )
 
-    with Live(
-        generate_live(),
-        refresh_per_second=16,
-        screen=True,
-    ) as live:
+    with Live(generate_live(), refresh_per_second=16, transient=True) as live:
         while global_step < cfg.agent.steps:
             agent.step(exec_callback=exec_callback)
             save_run(cfg, journal)

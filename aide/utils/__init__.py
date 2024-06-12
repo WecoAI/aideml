@@ -57,7 +57,7 @@ def extract_archives(path: Path):
 
         # special case: the intended output path already exists (maybe data has already been extracted by user)
         if f_out_dir.exists():
-            logger.debug(
+            logger.info(
                 f"Skipping {zip_f} as an item with the same name already exists."
             )
             # if it's a file, it's probably exactly the same as in the zip -> remove the zip
@@ -66,7 +66,7 @@ def extract_archives(path: Path):
                 zip_f.unlink()
             continue
 
-        logger.debug(f"Extracting: {zip_f}")
+        logger.info(f"Extracting: {zip_f}")
         f_out_dir.mkdir(exist_ok=True)
         with zipfile.ZipFile(zip_f, "r") as zip_ref:
             zip_ref.extractall(f_out_dir)
@@ -81,13 +81,13 @@ def extract_archives(path: Path):
             sub_item = contents[0]
             # if it's a dir, move its contents to the parent and remove it
             if sub_item.is_dir():
-                logger.debug(f"Special handling (child is dir) enabled for: {zip_f}")
+                logger.info(f"Special handling (child is dir) enabled for: {zip_f}")
                 for f in sub_item.rglob("*"):
                     shutil.move(f, f_out_dir)
                 sub_item.rmdir()
             # if it's a file, rename it to the parent and remove the parent
             elif sub_item.is_file():
-                logger.debug(f"Special handling (child is file) enabled for: {zip_f}")
+                logger.info(f"Special handling (child is file) enabled for: {zip_f}")
                 sub_item_tmp = sub_item.rename(f_out_dir.with_suffix(".__tmp_rename"))
                 f_out_dir.rmdir()
                 sub_item_tmp.rename(f_out_dir)

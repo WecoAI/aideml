@@ -199,7 +199,7 @@ class Interpreter:
 
         """
 
-        logger.debug(f"REPL is executing code (reset_session={reset_session})")
+        logger.info(f"REPL is executing code (reset_session={reset_session})")
 
         if reset_session:
             if self.process is not None:
