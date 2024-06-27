@@ -61,6 +61,10 @@ def run():
         datefmt="[%X]",
         handlers=[RichHandler()],
     )
+    # dont want info logs from httpx
+    httpx_logger: logging.Logger = logging.getLogger("httpx")
+    httpx_logger.setLevel(logging.WARNING)
+
     logger = logging.getLogger("aide")
     logger.info(f'Starting run "{cfg.exp_name}"')
 
