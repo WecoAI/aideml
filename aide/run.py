@@ -53,6 +53,30 @@ def journal_to_rich_tree(journal: Journal):
     return tree
 
 
+def journal_to_string_tree(journal: Journal) -> str:
+    best_node = journal.get_best_node()
+    tree_str = "Solution tree\n"
+
+    def append_rec(node: Node, level: int):
+        nonlocal tree_str
+        indent = "  " * level
+        if node.is_buggy:
+            s = f"{indent}◍ bug (ID: {node.id})\n"
+        else:
+            if node is best_node:
+                s = f"{indent}● {node.metric.value:.3f} (best) (ID: {node.id})\n"
+            else:
+                s = f"{indent}● {node.metric.value:.3f} (ID: {node.id})\n"
+        tree_str += s
+        for child in node.children:
+            append_rec(child, level + 1)
+
+    for n in journal.draft_nodes:
+        append_rec(n, 0)
+
+    return tree_str
+
+
 def run():
     cfg = load_cfg()
     logging.basicConfig(
@@ -140,6 +164,8 @@ def run():
             global_step = len(journal)
             live.update(generate_live())
     interpreter.cleanup_session()
+
+    logger.info(journal_to_string_tree(journal))
 
     # report = journal2report(journal, task_desc)
 
