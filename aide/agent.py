@@ -37,8 +37,18 @@ review_func_spec = FunctionSpec(
                 "type": "boolean",
                 "description": "true if the metric should be minimized (i.e. a lower metric value is better, such as with MSE), false if the metric should be maximized (i.e. a higher metric value is better, such as with accuracy).",
             },
+            "has_csv_submission": {
+                "type": "boolean",
+                "description": "true if the code saves the predictions on the test data in a `submission.csv` file in the `./working` directory, otherwise false.",
+            },
         },
-        "required": ["is_bug", "summary", "metric", "lower_is_better"],
+        "required": [
+            "is_bug",
+            "summary",
+            "metric",
+            "lower_is_better",
+            "has_csv_submission",
+        ],
     },
     description="Submit a review evaluating the output of the training script.",
 )
@@ -334,6 +344,8 @@ class Agent:
             or node.exc_type is not None
             or response["metric"] is None
         )
+        node.has_csv_submission = False
+        node.has_csv_submission = response["has_csv_submission"] and not node.is_buggy
 
         if node.is_buggy:
             logger.info(f"Parsed results: Node {node.id} is buggy")
@@ -343,3 +355,7 @@ class Agent:
             node.metric = MetricValue(
                 response["metric"], maximize=not response["lower_is_better"]
             )
+            if node.has_csv_submission:
+                logger.info(f"Parsed results: Node {node.id} saves predictions")
+            else:
+                logger.info(f"Parsed results: Node {node.id} does not save predictions")
