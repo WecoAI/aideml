@@ -313,6 +313,7 @@ class Agent:
         # best_solution/submission.csv by copying it there
         best_node = self.journal.get_best_node()
         if best_node is not None and best_node.id == result_node.id:
+            logger.info(f"Node {result_node.id} is the best node so far")
             best_solution_dir = self.cfg.workspace_dir / "best_solution"
             best_solution_dir.mkdir(exist_ok=True, parents=True)
             try:
