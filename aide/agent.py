@@ -27,7 +27,7 @@ review_func_spec = FunctionSpec(
             },
             "summary": {
                 "type": "string",
-                "description": "if there is a bug, propose a fix. Otherwise, write a short summary (2-3 sentences) describing the empirical findings.",
+                "description": "if there is a bug or the submission.csv was not produced, propose a fix. Otherwise, write a short summary (2-3 sentences) describing the empirical findings.",
             },
             "metric": {
                 "type": "number",
