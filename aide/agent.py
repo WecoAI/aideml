@@ -310,7 +310,7 @@ class Agent:
         self.journal.append(result_node)
 
         # if the result_node is the best node, cache its working/submission.csv to
-        # best_solution/submission.csv by copying it
+        # best_solution/submission.csv by copying it there
         best_node = self.journal.get_best_node()
         if best_node is not None and best_node.id == result_node.id:
             best_solution_dir = self.cfg.workspace_dir / "best_solution"
@@ -320,6 +320,9 @@ class Agent:
                     self.cfg.workspace_dir / "working" / "submission.csv",
                     best_solution_dir,
                 )
+                # also take note of the node id of the best node
+                with open(best_solution_dir / "node_id.txt", "w") as f:
+                    f.write(str(result_node.id))
             except FileNotFoundError:
                 logger.warning("No submission.csv file to copy to best_solution")
 
