@@ -53,7 +53,7 @@ class Experiment:
             save_run(self.cfg, self.journal)
         self.interpreter.cleanup_session()
 
-        best_node = self.journal.get_best_node(only_good=False)
+        best_node = self.journal.get_best_node()
         return Solution(code=best_node.code, valid_metric=best_node.metric.value)
 
 

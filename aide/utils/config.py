@@ -181,6 +181,6 @@ def save_run(cfg: Config, journal):
     # create the tree + code visualization
     tree_export.generate(cfg, journal, cfg.log_dir / "tree_plot.html")
     # save the best found solution
-    best_node = journal.get_best_node(only_good=False)
+    best_node = journal.get_best_node()
     with open(cfg.log_dir / "best_solution.py", "w") as f:
         f.write(best_node.code)
