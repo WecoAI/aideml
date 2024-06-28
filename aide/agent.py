@@ -1,3 +1,4 @@
+import shutil
 import logging
 import random
 from typing import Any, Callable, cast
@@ -307,6 +308,20 @@ class Agent:
             exec_result=exec_callback(result_node.code, True),
         )
         self.journal.append(result_node)
+
+        # if the result_node is the best node, cache its working/submission.csv to
+        # best_solution/submission.csv by copying it
+        best_node = self.journal.get_best_node()
+        if best_node is not None and best_node.id == result_node.id:
+            best_solution_dir = self.cfg.workspace_dir / "best_solution"
+            best_solution_dir.mkdir(exist_ok=True, parents=True)
+            try:
+                shutil.copy(
+                    self.cfg.workspace_dir / "working" / "submission.csv",
+                    best_solution_dir,
+                )
+            except FileNotFoundError:
+                logger.warning("No submission.csv file to copy to best_solution")
 
     def parse_exec_result(self, node: Node, exec_result: ExecutionResult) -> Node:
         logger.info(f"Agent is parsing execution results for node {node.id}")
