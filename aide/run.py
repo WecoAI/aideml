@@ -4,15 +4,12 @@ import shutil
 
 from . import backend
 
-from .utils import tree_export
 from .agent import Agent
 from .interpreter import Interpreter
 from .journal import Journal, Node
 from omegaconf import OmegaConf
 from rich.columns import Columns
 from rich.console import Group
-from rich.live import Live
-from rich.logging import RichHandler
 from rich.padding import Padding
 from rich.panel import Panel
 from rich.progress import (
@@ -86,9 +83,7 @@ def run():
     cfg = load_cfg()
     logging.basicConfig(
         level=getattr(logging, cfg.log_level.upper()),
-        format="%(message)s",
-        datefmt="[%X]",
-        handlers=[RichHandler()],
+        format="[%(asctime)s] %(levelname)s: %(message)s",
     )
     # dont want info logs from httpx
     httpx_logger: logging.Logger = logging.getLogger("httpx")
@@ -162,17 +157,13 @@ def run():
             subtitle="Press [b]Ctrl+C[/b] to stop the run",
         )
 
-    with Live(generate_live(), refresh_per_second=16, transient=True) as live:
-        while global_step < cfg.agent.steps:
-            agent.step(exec_callback=exec_callback)
-            save_run(cfg, journal)
-            global_step = len(journal)
-            live.update(generate_live())
+    while global_step < cfg.agent.steps:
+        agent.step(exec_callback=exec_callback)
+        save_run(cfg, journal)
+        global_step = len(journal)
     interpreter.cleanup_session()
 
     logger.info(journal_to_string_tree(journal))
-
-    # report = journal2report(journal, task_desc)
 
 
 if __name__ == "__main__":
