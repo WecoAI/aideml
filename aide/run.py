@@ -55,7 +55,6 @@ def journal_to_rich_tree(journal: Journal):
 
 def journal_to_string_tree(journal: Journal) -> str:
     best_node = journal.get_best_node()
-    last_saved_node = journal.get_last_saved_node()
     tree_str = "Solution tree\n"
 
     def append_rec(node: Node, level: int):
@@ -64,11 +63,10 @@ def journal_to_string_tree(journal: Journal) -> str:
         if node.is_buggy:
             s = f"{indent}◍ bug (ID: {node.id})\n"
         else:
+            # support for multiple markers; atm only "best" is supported
             markers = []
             if node is best_node:
                 markers.append("best")
-            if node is last_saved_node:
-                markers.append("last saved")
             marker_str = " & ".join(markers)
             if marker_str:
                 s = f"{indent}● {node.metric.value:.3f} ({marker_str}) (ID: {node.id})\n"

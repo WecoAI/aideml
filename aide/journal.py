@@ -47,8 +47,6 @@ class Node(DataClassJsonMixin):
     # whether the agent decided that the code is buggy
     # -> always True if exc_type is not None or no valid metric
     is_buggy: bool = field(default=None, kw_only=True)  # type: ignore
-    # whether the code saves the submissions to a csv file
-    has_csv_submission: bool = field(default=None, kw_only=True)  # type: ignore
 
     def __post_init__(self) -> None:
         if self.parent is not None:
@@ -180,13 +178,6 @@ class Journal(DataClassJsonMixin):
         else:
             nodes = self.nodes
         return max(nodes, key=lambda n: n.metric)
-
-    def get_last_saved_node(self) -> None | Node:
-        """Return the last node that saved submissions to a csv file."""
-        for n in reversed(self.nodes):
-            if n.has_csv_submission:
-                return n
-        return None
 
     def generate_summary(self, include_code: bool = False) -> str:
         """Generate a summary of the journal for the agent."""

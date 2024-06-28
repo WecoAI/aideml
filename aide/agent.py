@@ -256,7 +256,8 @@ class Agent:
         prompt: Any = {
             "Introduction": (
                 "You are a Kaggle grandmaster attending a competition. "
-                "Your previous solution had a bug, so based on the information below, you should revise it in order to fix this bug. "
+                "Your previous solution had a bug and/or did not produce a submission.csv, "
+                "so based on the information below, you should revise it in order to fix this. "
                 "Your response should be an implementation outline in natural language,"
                 " followed by a single markdown code block which implements the bugfix/solution."
             ),
@@ -343,19 +344,16 @@ class Agent:
             response["is_bug"]
             or node.exc_type is not None
             or response["metric"] is None
+            or response["has_csv_submission"] is False
         )
-        node.has_csv_submission = False
-        node.has_csv_submission = response["has_csv_submission"] and not node.is_buggy
 
         if node.is_buggy:
-            logger.info(f"Parsed results: Node {node.id} is buggy")
+            logger.info(
+                f"Parsed results: Node {node.id} is buggy and/or did not produce a submission.csv"
+            )
             node.metric = WorstMetricValue()
         else:
             logger.info(f"Parsed results: Node {node.id} is not buggy")
             node.metric = MetricValue(
                 response["metric"], maximize=not response["lower_is_better"]
             )
-            if node.has_csv_submission:
-                logger.info(f"Parsed results: Node {node.id} saves predictions")
-            else:
-                logger.info(f"Parsed results: Node {node.id} does not save predictions")
