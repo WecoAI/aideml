@@ -302,13 +302,13 @@ class Agent:
         else:
             result_node = self._improve(parent_node)
 
-        self.parse_exec_result(
+        result_node = self.parse_exec_result(
             node=result_node,
             exec_result=exec_callback(result_node.code, True),
         )
         self.journal.append(result_node)
 
-    def parse_exec_result(self, node: Node, exec_result: ExecutionResult):
+    def parse_exec_result(self, node: Node, exec_result: ExecutionResult) -> Node:
         logger.info(f"Agent is parsing execution results for node {node.id}")
 
         node.absorb_exec_result(exec_result)
@@ -357,3 +357,5 @@ class Agent:
             node.metric = MetricValue(
                 response["metric"], maximize=not response["lower_is_better"]
             )
+
+        return node
