@@ -29,6 +29,8 @@ exec:
 agent:
   # how many improvement iterations to run
   steps: 20
+  # total time available to agent (purely informative, users responsible for timeout)
+  time_limit: 86400 # 24 hrs
   # whether to instruct the agent to use CV (set to 1 to disable)
   k_fold_validation: 5
   # whether to instruct the agent to generate a prediction function

@@ -38,6 +38,7 @@ class SearchConfig:
 @dataclass
 class AgentConfig:
     steps: int
+    time_limit: int
     k_fold_validation: int
     expose_prediction: bool
     data_preview: bool
