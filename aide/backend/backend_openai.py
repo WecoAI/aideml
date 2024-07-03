@@ -18,12 +18,12 @@ logger = logging.getLogger("aide")
 _client: openai.OpenAI = None  # type: ignore
 
 
-OPENAI_TIMEOUT_EXCEPTIONS = [
+OPENAI_TIMEOUT_EXCEPTIONS = (
     openai.RateLimitError,
     openai.APIConnectionError,
     openai.APITimeoutError,
     openai.InternalServerError,
-]
+)
 
 
 @once
