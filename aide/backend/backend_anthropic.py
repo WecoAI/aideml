@@ -22,7 +22,7 @@ ANTHROPIC_TIMEOUT_EXCEPTIONS = (
 @once
 def _setup_anthropic_client():
     global _client
-    _client = anthropic.Anthropic()
+    _client = anthropic.Anthropic(max_retries=0)
 
 
 def query(
