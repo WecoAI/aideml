@@ -180,7 +180,9 @@ def save_run(cfg: Config, journal):
     # save config
     OmegaConf.save(config=cfg, f=cfg.log_dir / "config.yaml")
     # create the tree + code visualization
-    tree_export.generate(cfg, journal, cfg.log_dir / "tree_plot.html")
+    # only if the journal has nodes
+    if len(journal) > 0:
+        tree_export.generate(cfg, journal, cfg.log_dir / "tree_plot.html")
     # save the best found solution
     best_node = journal.get_best_node()
     if best_node is not None:
