@@ -16,6 +16,10 @@ from .utils.response import extract_code, extract_text_up_to_code, wrap_code
 logger = logging.getLogger("aide")
 
 
+def format_time(time_in_sec: int):
+    return f"{time_in_sec // 3600}hrs {(time_in_sec % 3600) // 60}mins {time_in_sec % 60}secs"
+
+
 ExecCallbackType = Callable[[str, bool], ExecutionResult]
 
 review_func_spec = FunctionSpec(
@@ -70,6 +74,7 @@ class Agent:
         self.journal = journal
         self.data_preview: str | None = None
         self.start_time = time.time()
+        self.current_step = 0
 
     def search_policy(self) -> Node | None:
         """Select a node to work on (or None to draft a new node)."""
@@ -134,14 +139,13 @@ class Agent:
         exec_timeout = int(min(self.cfg.exec.timeout, tot_time_remaining))
 
         impl_guideline = [
+            f"<TOTAL_TIME_REMAINING: {format_time(tot_time_remaining)}>",
+            f"<TOTAL_STEPS_REMAINING: {self.acfg.steps - self.current_step}>",
             "The code should **implement the proposed solution**, **print the value of the evaluation metric computed on a hold-out validation set**,",
             "**AND MOST IMPORTANTLY SAVE PREDICTIONS ON THE PROVIDED UNLABELED TEST DATA IN A `submission.csv` FILE IN THE ./working DIRECTORY.**",
             "The code should be a single-file python program that is self-contained and can be executed as-is.",
             "No parts of the code should be skipped, don't terminate the before finishing the script.",
             "Your response should only contain a single code block.",
-            f"You have a total time limit of {humanize.naturaldelta(self.acfg.time_limit)} for the entire task.",
-            f"Total time elapsed: {humanize.naturaldelta(tot_time_elapsed)}.",
-            f"Total time remaining: {humanize.naturaldelta(tot_time_remaining)}",
             f"Be aware of the running time of the code, it should complete within {humanize.naturaldelta(exec_timeout)}.",
             'All the provided input data is stored in "./input" directory.',
             '**You MUST submit predictions on the provided unlabeled test data in a `submission.csv` file** file in the "./working" directory as described in the task description** This is extremely important since this file is used for grading/evaluation. DO NOT FORGET THE submission.csv file!',
@@ -340,6 +344,7 @@ class Agent:
 
             except FileNotFoundError:
                 logger.warning("No submission.csv file to copy to best_solution")
+        self.current_step += 1
 
     def parse_exec_result(self, node: Node, exec_result: ExecutionResult) -> Node:
         logger.info(f"Agent is parsing execution results for node {node.id}")
