@@ -31,9 +31,17 @@ review_func_spec = FunctionSpec(
                 "type": "boolean",
                 "description": "true if the output log shows that the execution failed or has some bug, otherwise false.",
             },
+            "has_csv_submission": {
+                "type": "boolean",
+                "description": "true if the code saves the predictions on the test data"
+                " in a `submission.csv` file in the `./submission/` directory, otherwise false."
+                " Note that the file MUST be saved in the ./submission/ directory for this to be evaluated as true."
+                " Otherwise, it should be evaluated as false."
+                " You can assume the ./submission/ directory exists and is writable.",
+            },
             "summary": {
                 "type": "string",
-                "description": "if there is a bug or the submission.csv was not produced, propose a fix. Otherwise, write a short summary (2-3 sentences) describing the empirical findings.",
+                "description": "if there is a bug or the submission.csv was not properly produced, propose a fix. Otherwise, write a short summary (2-3 sentences) describing the empirical findings.",
             },
             "metric": {
                 "type": "number",
@@ -43,17 +51,13 @@ review_func_spec = FunctionSpec(
                 "type": "boolean",
                 "description": "true if the metric should be minimized (i.e. a lower metric value is better, such as with MSE), false if the metric should be maximized (i.e. a higher metric value is better, such as with accuracy).",
             },
-            "has_csv_submission": {
-                "type": "boolean",
-                "description": "true if the code saves the predictions on the test data in a `submission.csv` file in the `./working` directory, otherwise false.",
-            },
         },
         "required": [
             "is_bug",
+            "has_csv_submission",
             "summary",
             "metric",
             "lower_is_better",
-            "has_csv_submission",
         ],
     },
     description="Submit a review evaluating the output of the training script.",
@@ -142,7 +146,7 @@ class Agent:
             f"<TOTAL_TIME_REMAINING: {format_time(tot_time_remaining)}>",
             f"<TOTAL_STEPS_REMAINING: {self.acfg.steps - self.current_step}>",
             "The code should **implement the proposed solution**, **print the value of the evaluation metric computed on a hold-out validation set**,",
-            "**AND MOST IMPORTANTLY SAVE PREDICTIONS ON THE PROVIDED UNLABELED TEST DATA IN A `submission.csv` FILE IN THE ./working DIRECTORY.**",
+            "**AND MOST IMPORTANTLY SAVE PREDICTIONS ON THE PROVIDED UNLABELED TEST DATA IN A `submission.csv` FILE IN THE ./submission/ DIRECTORY.**",
             "The code should be a single-file python program that is self-contained and can be executed as-is.",
             "No parts of the code should be skipped, don't terminate the before finishing the script.",
             "Your response should only contain a single code block.",
@@ -150,7 +154,7 @@ class Agent:
             'All the provided input data is stored in "./input" directory.',
             '**You MUST submit predictions on the provided unlabeled test data in a `submission.csv` file** file in the "./working" directory as described in the task description** This is extremely important since this file is used for grading/evaluation. DO NOT FORGET THE submission.csv file!',
             'You can also use the "./working" directory to store any temporary files that your code needs to create.',
-            "REMEMBER THE submission.csv FILE!!!!!!!!!!!!!!!!",
+            "REMEMBER THE ./submission/submission.csv FILE!!!!! The correct directory is important too.",
         ]
         if self.acfg.expose_prediction:
             impl_guideline.append(
@@ -335,7 +339,7 @@ class Agent:
                     f.write(str(result_node.id))
                 # submission.csv
                 shutil.copy(
-                    self.cfg.workspace_dir / "working" / "submission.csv",
+                    self.cfg.workspace_dir / "submission" / "submission.csv",
                     best_solution_dir,
                 )
                 # solution.py
