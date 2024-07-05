@@ -4,8 +4,6 @@ from typing import Callable
 import jsonschema
 from dataclasses_json import DataClassJsonMixin
 
-from aide.exceptions import SignalException
-
 PromptType = str | dict | list
 FunctionCallType = dict
 OutputType = str | FunctionCallType
@@ -24,11 +22,6 @@ def backoff_create(
     try:
         return create_fn(*args, **kwargs)
     except retry_exceptions as e:
-        # some exceptions are triggered by any generic Exception.
-        # we need to check if the cause is a SignalException
-        # because in that case we dont want to backoff and retry
-        if isinstance(e.__cause__, SignalException):
-            raise e.__cause__
         return False
 
 
