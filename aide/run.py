@@ -81,15 +81,21 @@ def journal_to_string_tree(journal: Journal) -> str:
 
 def run():
     cfg = load_cfg()
+    log_format = "[%(asctime)s] %(levelname)s: %(message)s"
     logging.basicConfig(
         level=getattr(logging, cfg.log_level.upper()),
-        format="[%(asctime)s] %(levelname)s: %(message)s",
+        format=log_format,
     )
     # dont want info logs from httpx
     httpx_logger: logging.Logger = logging.getLogger("httpx")
     httpx_logger.setLevel(logging.WARNING)
 
     logger = logging.getLogger("aide")
+    # save logs to a file as well, using same format
+    cfg.log_dir.mkdir(parents=True, exist_ok=True)
+    file_handler = logging.FileHandler(cfg.log_dir / "aide.log")
+    file_handler.setFormatter(logging.Formatter(log_format))
+    logger.addHandler(file_handler)
     logger.info(f'Starting run "{cfg.exp_name}"')
 
     task_desc = load_task_desc(cfg)
