@@ -1,6 +1,7 @@
 """configuration and setup utils"""
 
 from dataclasses import dataclass
+import json
 from pathlib import Path
 from typing import Hashable, cast
 
@@ -11,6 +12,8 @@ from rich.syntax import Syntax
 import shutup
 from rich.logging import RichHandler
 import logging
+
+from aide.journal import Journal, filter_journal
 
 from . import tree_export
 from . import copytree, preproc_data, serialize
@@ -181,11 +184,13 @@ def prep_agent_workspace(cfg: Config):
         preproc_data(cfg.workspace_dir / "input")
 
 
-def save_run(cfg: Config, journal):
+def save_run(cfg: Config, journal: Journal):
     cfg.log_dir.mkdir(parents=True, exist_ok=True)
 
+    filtered_journal = filter_journal(journal)
     # save journal
     serialize.dump_json(journal, cfg.log_dir / "journal.json")
+    serialize.dump_json(filtered_journal, cfg.log_dir / "filtered_journal.json")
     # save config
     OmegaConf.save(config=cfg, f=cfg.log_dir / "config.yaml")
     # create the tree + code visualization

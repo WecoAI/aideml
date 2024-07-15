@@ -7,6 +7,7 @@ The journal is the core datastructure in AIDE that contains:
 ...
 """
 
+import copy
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -190,3 +191,57 @@ class Journal(DataClassJsonMixin):
             summary_part += f"Validation Metric: {n.metric.value}\n"
             summary.append(summary_part)
         return "\n-------------------------------\n".join(summary)
+
+
+def get_path_to_node(journal: Journal, node_id: str) -> list[str]:
+    path = [node_id]
+
+    node2parent = {n.id: n.parent.id for n in journal.nodes if n.parent is not None}
+    while node_id in node2parent:
+        parent_id = node2parent[node_id]
+        path.append(parent_id)
+        node_id = parent_id
+    return path[::-1]
+
+
+def get_longest_path(journal: Journal) -> list[str]:
+    longest_path = []
+    for node in journal.nodes:
+        path = get_path_to_node(journal, node.id)
+        if len(path) > len(longest_path):
+            longest_path = path
+    return longest_path
+
+
+def filter_on_path(journal: Journal, path: list[str]) -> Journal:
+    journal_copy = copy.deepcopy(journal)
+    journal_copy.nodes = [n for n in journal.nodes if n.id in path]
+    # further filter nodes, setting their _term_out and exc_stack to "<OMITTED>"
+    for n in journal_copy.nodes:
+        n._term_out = "<OMITTED>"
+        n.exc_stack = "<OMITTED>"
+
+    return journal_copy
+
+
+def filter_for_best_path(journal: Journal, best_node: str) -> Journal:
+    path_to_best = get_path_to_node(journal, best_node)
+    filtered_journal = filter_on_path(journal, path_to_best)
+    return filtered_journal
+
+
+def filter_for_longest_path(journal: Journal) -> Journal:
+    longest_path = get_longest_path(journal)
+    filtered_journal = filter_on_path(journal, longest_path)
+    return filtered_journal
+
+
+def filter_journal(journal: Journal) -> Journal:
+    best_node = journal.get_best_node(only_good=True)
+
+    if best_node is not None:
+        filtered_journal = filter_for_best_path(journal, best_node.id)
+    else:
+        filtered_journal = filter_for_longest_path(journal)
+
+    return filtered_journal
