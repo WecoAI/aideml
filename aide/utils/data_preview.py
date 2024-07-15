@@ -112,7 +112,29 @@ def preview_json(p: Path, file_name: str):
     """Generate a textual preview of a json file using a generated json schema"""
     builder = SchemaBuilder()
     with open(p) as f:
-        builder.add_object(json.load(f))
+        first_line = f.readline().strip()
+
+        try:
+            first_object = json.loads(first_line)
+
+            if not isinstance(first_object, dict):
+                raise json.JSONDecodeError("The first line isn't JSON", first_line, 0)
+
+            # if the the next line exists and is not empty, then it is a JSONL file
+            second_line = f.readline().strip()
+            if second_line:
+                f.seek(0)  # so reset and read line by line
+                for line in f:
+                    builder.add_object(json.loads(line.strip()))
+            # if it is empty, then it's a single JSON object file
+            else:
+                builder.add_object(first_object)
+
+        except json.JSONDecodeError:
+            # if first line isn't JSON, then it's prettified and we can read whole file
+            f.seek(0)
+            builder.add_object(json.load(f))
+
     return f"-> {file_name} has auto-generated json schema:\n" + builder.to_json(
         indent=2
     )
