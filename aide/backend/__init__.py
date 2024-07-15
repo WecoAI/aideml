@@ -1,5 +1,8 @@
+import logging
 from . import backend_anthropic, backend_openai
 from .utils import FunctionSpec, OutputType, PromptType, compile_prompt_to_md
+
+logger = logging.getLogger("aide")
 
 
 def query(
@@ -33,12 +36,24 @@ def query(
         "max_tokens": max_tokens,
     }
 
+    logger.info("---Querying model---", extra={"verbose": True})
+    system_message = compile_prompt_to_md(system_message) if system_message else None
+    if system_message:
+        logger.info(f"system: {system_message}", extra={"verbose": True})
+    user_message = compile_prompt_to_md(user_message) if user_message else None
+    if user_message:
+        logger.info(f"user: {user_message}", extra={"verbose": True})
+    if func_spec:
+        logger.info(f"function spec: {func_spec.to_dict()}", extra={"verbose": True})
+
     query_func = backend_openai.query if "gpt-" in model else backend_anthropic.query
     output, req_time, in_tok_count, out_tok_count, info = query_func(
-        system_message=compile_prompt_to_md(system_message) if system_message else None,
-        user_message=compile_prompt_to_md(user_message) if user_message else None,
+        system_message=system_message,
+        user_message=user_message,
         func_spec=func_spec,
         **model_kwargs,
     )
+    logger.info(f"response: {output}", extra={"verbose": True})
+    logger.info(f"---Query complete---", extra={"verbose": True})
 
     return output

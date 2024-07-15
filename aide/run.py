@@ -1,6 +1,7 @@
 import atexit
 import logging
 import shutil
+import sys
 
 from . import backend
 
@@ -24,6 +25,15 @@ from rich.markdown import Markdown
 from rich.status import Status
 from rich.tree import Tree
 from .utils.config import load_task_desc, prep_agent_workspace, save_run, load_cfg
+
+
+class VerboseFilter(logging.Filter):
+    """
+    Filter (remove) logs that have verbose attribute set to True
+    """
+
+    def filter(self, record):
+        return not (hasattr(record, "verbose") and record.verbose)
 
 
 def journal_to_rich_tree(journal: Journal):
@@ -83,19 +93,32 @@ def run():
     cfg = load_cfg()
     log_format = "[%(asctime)s] %(levelname)s: %(message)s"
     logging.basicConfig(
-        level=getattr(logging, cfg.log_level.upper()),
-        format=log_format,
+        level=getattr(logging, cfg.log_level.upper()), format=log_format, handlers=[]
     )
     # dont want info logs from httpx
     httpx_logger: logging.Logger = logging.getLogger("httpx")
     httpx_logger.setLevel(logging.WARNING)
 
     logger = logging.getLogger("aide")
-    # save logs to a file as well, using same format
+    # save logs to files as well, using same format
     cfg.log_dir.mkdir(parents=True, exist_ok=True)
+
+    # we'll have a normal log file and verbose log file. Only normal to console
     file_handler = logging.FileHandler(cfg.log_dir / "aide.log")
     file_handler.setFormatter(logging.Formatter(log_format))
+    file_handler.addFilter(VerboseFilter())
+
+    verbose_file_handler = logging.FileHandler(cfg.log_dir / "aide.verbose.log")
+    verbose_file_handler.setFormatter(logging.Formatter(log_format))
+
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(logging.Formatter(log_format))
+    console_handler.addFilter(VerboseFilter())
+
     logger.addHandler(file_handler)
+    logger.addHandler(verbose_file_handler)
+    logger.addHandler(console_handler)
+
     logger.info(f'Starting run "{cfg.exp_name}"')
 
     task_desc = load_task_desc(cfg)
