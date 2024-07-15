@@ -307,6 +307,10 @@ class Agent:
         self.data_preview = data_preview.generate(self.cfg.workspace_dir)
 
     def step(self, exec_callback: ExecCallbackType):
+        # clear the submission dir from previous steps
+        shutil.rmtree(self.cfg.workspace_dir / "submission", ignore_errors=True)
+        (self.cfg.workspace_dir / "submission").mkdir(exist_ok=True)
+
         if not self.journal.nodes or self.data_preview is None:
             self.update_data_preview()
 
@@ -324,6 +328,14 @@ class Agent:
             node=result_node,
             exec_result=exec_callback(result_node.code, True),
         )
+        # handle final cases where we missed buggy nodes somehow
+        if not result_node.is_buggy:
+            if not (self.cfg.workspace_dir / "submission" / "submission.csv").exists():
+                result_node.is_buggy = True
+                result_node.metric = WorstMetricValue()
+                logger.info(
+                    f"Actually, node {result_node.id} did not produce a submission.csv"
+                )
         self.journal.append(result_node)
 
         # if the result_node is the best node, cache its submission.csv and solution.py
@@ -334,20 +346,17 @@ class Agent:
                 logger.info(f"Node {result_node.id} is the best node so far")
                 best_solution_dir = self.cfg.workspace_dir / "best_solution"
                 best_solution_dir.mkdir(exist_ok=True, parents=True)
-                try:
-                    # take note of the node id of the best node
-                    with open(best_solution_dir / "node_id.txt", "w") as f:
-                        f.write(str(result_node.id))
-                    # submission.csv
-                    shutil.copy(
-                        self.cfg.workspace_dir / "submission" / "submission.csv",
-                        best_solution_dir,
-                    )
-                    # solution.py
-                    with open(best_solution_dir / "solution.py", "w") as f:
-                        f.write(result_node.code)
-                except FileNotFoundError:
-                    logger.warning("No submission.csv file to copy to best_solution")
+                # submission.csv
+                shutil.copy(
+                    self.cfg.workspace_dir / "submission" / "submission.csv",
+                    best_solution_dir,
+                )
+                # solution.py
+                with open(best_solution_dir / "solution.py", "w") as f:
+                    f.write(result_node.code)
+                # take note of the node id of the best node
+                with open(best_solution_dir / "node_id.txt", "w") as f:
+                    f.write(str(result_node.id))
             else:
                 logger.info(f"Node {result_node.id} is not the best node")
                 logger.info(f"Node {best_node.id} is still the best node")
@@ -384,12 +393,18 @@ class Agent:
         if not isinstance(response["metric"], float):
             response["metric"] = None
 
+        # do an extra check, to catch cases where judge fails
+        has_csv_submission = (
+            self.cfg.workspace_dir / "submission" / "submission.csv"
+        ).exists()
+
         node.analysis = response["summary"]
         node.is_buggy = (
             response["is_bug"]
             or node.exc_type is not None
             or response["metric"] is None
-            or response["has_csv_submission"] is False
+            or response["has_csv_submission"] == False
+            or has_csv_submission == False
         )
 
         if node.is_buggy:
