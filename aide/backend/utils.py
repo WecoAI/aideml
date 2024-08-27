@@ -69,6 +69,7 @@ class FunctionSpec(DataClassJsonMixin):
                 "description": self.description,
                 "parameters": self.json_schema,
             },
+            "strict": True,
         }
 
     @property

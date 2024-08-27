@@ -41,7 +41,10 @@ review_func_spec = FunctionSpec(
             },
             "summary": {
                 "type": "string",
-                "description": "if there is a bug or the submission.csv was not properly produced, propose a fix. Otherwise, write a short summary (2-3 sentences) describing the empirical findings.",
+                "description": "write a short summary (2-3 sentences) describing "
+                " the empirical findings. Alternatively mention if there is a bug or"
+                " the submission.csv was not properly produced."
+                " DO NOT suggest fixes or improvements.",
             },
             "metric": {
                 "type": "number",
@@ -346,12 +349,14 @@ class Agent:
                 logger.info(f"Node {result_node.id} is the best node so far")
                 best_solution_dir = self.cfg.workspace_dir / "best_solution"
                 best_solution_dir.mkdir(exist_ok=True, parents=True)
-                # submission.csv
+                # copy submission/submission.csv to best_submission/submission.csv
+                best_submission_dir = self.cfg.workspace_dir / "best_submission"
+                best_submission_dir.mkdir(exist_ok=True, parents=True)
                 shutil.copy(
                     self.cfg.workspace_dir / "submission" / "submission.csv",
-                    best_solution_dir,
+                    best_submission_dir,
                 )
-                # solution.py
+                # copy solution.py and relevant node id to best_solution/
                 with open(best_solution_dir / "solution.py", "w") as f:
                     f.write(result_node.code)
                 # take note of the node id of the best node

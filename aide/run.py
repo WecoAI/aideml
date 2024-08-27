@@ -191,11 +191,12 @@ def run():
 
     while global_step < cfg.agent.steps:
         agent.step(exec_callback=exec_callback)
+        # on the last step, print the tree
+        if global_step == cfg.agent.steps - 1:
+            logger.info(journal_to_string_tree(journal))
         save_run(cfg, journal)
         global_step = len(journal)
     interpreter.cleanup_session()
-
-    logger.info(journal_to_string_tree(journal))
 
 
 if __name__ == "__main__":
