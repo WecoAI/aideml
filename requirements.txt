@@ -23,10 +23,10 @@ igraph>=0.11.3
 genson>=1.2.0
 
 # agent requirements (packages that the agent might need)
-# torch
-# torchvision
-# torchaudio
-# torchtext
+torch==2.2.0
+torchvision==0.17.0
+torchaudio==2.2.0
+torchtext==0.17.0
 
 lightgbm
 matplotlib
@@ -69,7 +69,7 @@ librosa
 ipykernel
 ipython
 nbformat
-kornia
+kornia==0.6.10
 Pillow
 pyparsing
 pytz
@@ -80,11 +80,11 @@ gym
 optuna
 transformers
 datasets==2.1.0
-# torchmetrics
+torchmetrics==1.3.1
 pytorch-lightning
 sympy
 timm
-# torchinfo
+torchinfo
 pdf2image
 PyPDF
 pyocr
