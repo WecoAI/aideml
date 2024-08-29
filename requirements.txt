@@ -90,3 +90,9 @@ PyPDF
 pyocr
 pyarrow
 xlrd
+bson
+fastdtw
+textblob
+gdcm
+pylibjpeg
+geopy
