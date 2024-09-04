@@ -1,8 +1,29 @@
 import logging
-from . import backend_anthropic, backend_openai
+from . import backend_anthropic, backend_openai, backend_gdm
 from .utils import FunctionSpec, OutputType, PromptType, compile_prompt_to_md
 
 logger = logging.getLogger("aide")
+
+
+def determine_provider(model: str) -> str:
+    if model.startswith("gpt-"):
+        return "openai"
+    elif model.startswith("claude-"):
+        return "anthropic"
+    elif model.startswith("gemini-"):
+        return "gdm"
+    else:
+        raise ValueError(
+            f"Unknown model:  {model}."
+            " Maybe the `determine_provider` function needs to be updated."
+        )
+
+
+provider_to_query_func = {
+    "openai": backend_openai.query,
+    "anthropic": backend_anthropic.query,
+    "gdm": backend_gdm.query,
+}
 
 
 def query(
@@ -46,7 +67,8 @@ def query(
     if func_spec:
         logger.info(f"function spec: {func_spec.to_dict()}", extra={"verbose": True})
 
-    query_func = backend_openai.query if "gpt-" in model else backend_anthropic.query
+    provider = determine_provider(model)
+    query_func = provider_to_query_func[provider]
     output, req_time, in_tok_count, out_tok_count, info = query_func(
         system_message=system_message,
         user_message=user_message,
