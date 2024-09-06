@@ -2,16 +2,19 @@
 
 import time
 import logging
+import os
 
 import google.api_core.exceptions
 import google.generativeai as genai
 from google.generativeai.generative_models import generation_types
 
+from funcy import once
 from .utils import FunctionSpec, OutputType, backoff_create
 
 logger = logging.getLogger("aide")
 
-model = None  # type: ignore
+genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+gdm_model = None  # type: ignore
 generation_config = None  # type: ignore
 
 GDM_TIMEOUT_EXCEPTIONS = (
@@ -40,11 +43,11 @@ SAFETY_SETTINGS = [
 
 
 @once
-def _setup_gdm_client(model_name: str, temperature):
-    global model
+def _setup_gdm_client(model_name: str, temperature: float):
+    global gdm_model
     global generation_config
 
-    model = genai.GenerativeModel(model_name)
+    gdm_model = genai.GenerativeModel(model_name)
     generation_config = genai.GenerationConfig(temperature=temperature)
 
 
@@ -66,17 +69,17 @@ def query(
 
     # GDM gemini api doesnt support system messages outside of the beta
     messages = [
-        {"role": "user", "content": message}
+        {"role": "user", "parts": message}
         for message in [system_message, user_message]
         if message
     ]
 
     t0 = time.time()
     response: generation_types.GenerateContentResponse = backoff_create(
-        model.generate_content,
-        GDM_TIMEOUT_EXCEPTIONS,
-        history=messages,
-        config=generation_config,
+        gdm_model.generate_content,
+        retry_exceptions=GDM_TIMEOUT_EXCEPTIONS,
+        contents=messages,
+        generation_config=generation_config,
         safety_settings=SAFETY_SETTINGS,
     )
     req_time = time.time() - t0
