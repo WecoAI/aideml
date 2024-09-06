@@ -37,6 +37,8 @@ agent:
   expose_prediction: False
   # whether to provide the agent with a preview of the data
   data_preview: True
+  # whether to convert system messages into user messages
+  convert_system_to_user: False
 
   # LLM settings for coding
   code:

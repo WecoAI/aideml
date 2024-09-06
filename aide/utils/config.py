@@ -45,6 +45,7 @@ class AgentConfig:
     k_fold_validation: int
     expose_prediction: bool
     data_preview: bool
+    convert_system_to_user: bool
 
     code: StageConfig
     feedback: StageConfig

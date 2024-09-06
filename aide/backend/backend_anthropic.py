@@ -29,6 +29,7 @@ def query(
     system_message: str | None,
     user_message: str | None,
     func_spec: FunctionSpec | None = None,
+    convert_system_to_user: bool = False,
     **model_kwargs,
 ) -> tuple[OutputType, float, int, int, dict]:
     _setup_anthropic_client()
