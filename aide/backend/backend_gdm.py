@@ -55,6 +55,7 @@ def query(
     system_message: str | None,
     user_message: str | None,
     func_spec: FunctionSpec | None = None,
+    convert_system_to_user: bool = False,
     **model_kwargs,
 ) -> tuple[OutputType, float, int, int, dict]:
     model = model_kwargs.pop("model")

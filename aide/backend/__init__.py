@@ -33,6 +33,7 @@ def query(
     temperature: float | None = None,
     max_tokens: int | None = None,
     func_spec: FunctionSpec | None = None,
+    convert_system_to_user: bool = False,
     **model_kwargs,
 ) -> OutputType:
     """
@@ -73,6 +74,7 @@ def query(
         system_message=system_message,
         user_message=user_message,
         func_spec=func_spec,
+        convert_system_to_user=convert_system_to_user,
         **model_kwargs,
     )
     logger.info(f"response: {output}", extra={"verbose": True})
