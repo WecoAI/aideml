@@ -1,28 +1,27 @@
 import logging
-from . import backend_anthropic, backend_openai, backend_gdm
+from . import backend_anthropic, backend_openai, backend_openrouter, backend_gdm
 from .utils import FunctionSpec, OutputType, PromptType, compile_prompt_to_md
 
 logger = logging.getLogger("aide")
 
 
 def determine_provider(model: str) -> str:
-    if model.startswith("gpt-"):
+    if model.startswith("gpt-") or model.startswith("o1-"):
         return "openai"
     elif model.startswith("claude-"):
         return "anthropic"
     elif model.startswith("gemini-"):
         return "gdm"
+    # all other models are handle by openrouter
     else:
-        raise ValueError(
-            f"Unknown model:  {model}."
-            " Maybe the `determine_provider` function needs to be updated."
-        )
+        return "openrouter"
 
 
 provider_to_query_func = {
     "openai": backend_openai.query,
     "anthropic": backend_anthropic.query,
     "gdm": backend_gdm.query,
+    "openrouter": backend_openrouter.query,
 }
 
 
