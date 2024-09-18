@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 from typing import Callable
 
@@ -10,6 +11,7 @@ OutputType = str | FunctionCallType
 
 import backoff
 
+logger = logging.getLogger("aide")
 
 @backoff.on_predicate(
     wait_gen=backoff.expo,
@@ -22,6 +24,7 @@ def backoff_create(
     try:
         return create_fn(*args, **kwargs)
     except retry_exceptions as e:
+        logger.info(e)
         return False
 
 
