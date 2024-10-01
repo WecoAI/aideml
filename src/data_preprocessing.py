@@ -1,17 +1,13 @@
 import pandas as pd
 
 def preprocess_data(data):
-    """Preprocess the input DataFrame."""
-    # Ensure you're only applying string methods to string columns
-    for column in data.select_dtypes(include=['object']).columns:
-        data[column] = data[column].str.lower().str.strip()
-    
-    # Check if 'SalePrice' exists
-    if 'SalePrice' not in data.columns:
-        raise ValueError("The expected target column 'SalePrice' is not found in the DataFrame.")
-    
-    # Separate features and target variable
-    X = data.drop('SalePrice', axis=1)  # Use 'SalePrice' as the target column
-    y = data['SalePrice']  # Use 'SalePrice' as the target column
-    
-    return X, y
+    # Check if the target column exists in the DataFrame
+    if 'SalePrice' in data.columns:
+        # Drop the target variable from features for training data
+        X = data.drop(columns=['SalePrice'])
+        y = data['SalePrice']
+        return X, y
+    else:
+        # For test data, just return the features without any target variable
+        X = data
+        return X, None  # Return None for y as it's not available for test data
