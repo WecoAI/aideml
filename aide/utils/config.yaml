@@ -24,6 +24,12 @@ exec:
   agent_file_name: runfile.py
   format_tb_ipython: False
 
+generate_report: True
+# LLM settings for final report from journal
+report:
+  model: gpt-4-turbo
+  temp: 1.0
+
 # agent hyperparams
 agent:
   # how many improvement iterations to run
