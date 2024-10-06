@@ -33,7 +33,7 @@ def query(
         "max_tokens": max_tokens,
     }
 
-    query_func = backend_openai.query if "gpt-" in model else backend_anthropic.query
+    query_func = backend_anthropic.query if "claude-" in model else backend_openai.query
     output, req_time, in_tok_count, out_tok_count, info = query_func(
         system_message=compile_prompt_to_md(system_message) if system_message else None,
         user_message=compile_prompt_to_md(user_message) if user_message else None,
