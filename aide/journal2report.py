@@ -1,8 +1,8 @@
-from backend import query
-from journal import Journal
+from .backend import query
+from .journal import Journal
+from .utils.config import StageConfig
 
-
-def journal2report(journal: Journal, task_desc: dict):
+def journal2report(journal: Journal, task_desc: dict, rcfg: StageConfig):
     """
     Generate a report from a journal, the report will be in markdown format.
     """
@@ -24,6 +24,7 @@ def journal2report(journal: Journal, task_desc: dict):
     return query(
         system_message=system_prompt_dict,
         user_message=context_prompt,
-        model="gpt-4-turbo-preview",
+        model=rcfg.model,
+        temperature=rcfg.temp,
         max_tokens=4096,
     )

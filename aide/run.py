@@ -8,6 +8,7 @@ from .utils import tree_export
 from .agent import Agent
 from .interpreter import Interpreter
 from .journal import Journal, Node
+from .journal2report import journal2report
 from omegaconf import OmegaConf
 from rich.columns import Columns
 from rich.console import Group
@@ -130,7 +131,14 @@ def run():
             live.update(generate_live())
     interpreter.cleanup_session()
 
-    # report = journal2report(journal, task_desc)
+    if cfg.generate_report:
+        print("Generating final report from journal...")
+        report = journal2report(journal, task_desc, cfg.report)
+        print(report)
+        report_file_path = cfg.log_dir / 'report.md'
+        with open(report_file_path, "w") as f:
+            f.write(report)
+        print('Report written to file:', report_file_path)
 
 
 if __name__ == "__main__":
