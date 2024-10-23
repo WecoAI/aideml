@@ -1,4 +1,4 @@
-# AIDE: the Machine Learning CodeGen Agent
+# AIDE: the Machine Learning Engineer Agent
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)&ensp;
 [![PyPI](https://img.shields.io/pypi/v/aideml?color=blue)](https://pypi.org/project/aideml/)&ensp;
