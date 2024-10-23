@@ -82,6 +82,29 @@ To further customize the behaviour of AIDE, some useful options might be:
 
 You can check the [`config.yaml`](aide/utils/config.yaml) file for more options.
 
+### Using Local LLMs
+
+AIDE supports using local LLMs through OpenAI-compatible APIs. Here's how to set it up:
+
+1. Set up a local LLM server with an OpenAI-compatible API endpoint. You can use:
+   - [Ollama](https://github.com/ollama/ollama)
+   - or similar solutions
+
+2. Configure your environment to use the local endpoint:
+```bash
+export OPENAI_BASE_URL="http://localhost:11434/v1"  # For Ollama
+export OPENAI_API_KEY="local-llm"  # Can be any string if your local server doesn't require authentication
+```
+
+3. Update the model configuration in your AIDE command or config. For example, with Ollama:
+```bash
+# Example with house prices dataset
+aide agent.code.model="qwen2.5" agent.feedback.model="qwen2.5" report.model="qwen2.5" \
+    data_dir="example_tasks/house_prices" \
+    goal="Predict the sales price for each house" \
+    eval="Use the RMSE metric between the logarithm of the predicted and observed values."
+```
+
 ## Using AIDE in Python
 
 Using AIDE within your Python script/project is easy. Follow the setup steps above, and then create an AIDE experiment like below and start running:
