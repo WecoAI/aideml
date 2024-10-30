@@ -133,6 +133,36 @@ cd aideml
 pip install -e .
 ```
 
+## Using AIDE with Docker
+
+You can also run AIDE using Docker:
+
+1. Build the Docker image:
+```bash
+docker build -t aide .
+```
+
+2. Run AIDE with Docker (example with house prices task):
+```bash
+# Set custom workspace and logs location (optional)
+export WORKSPACE_BASE=$(pwd)/workspaces
+export LOGS_DIR=$(pwd)/logs
+
+docker run -it --rm \
+          -v "${LOGS_DIR:-$(pwd)/logs}:/app/logs" \
+          -v "${WORKSPACE_BASE:-$(pwd)/workspaces}:/app/workspaces" \
+          -v "$(pwd)/aide/example_tasks:/app/data" \
+          -e OPENAI_API_KEY="your-actual-api-key" \
+          aide \
+          data_dir=/app/data/house_prices \
+          goal="Predict the sales price for each house" \
+          eval="Use the RMSE metric between the logarithm of the predicted and observed values."
+```
+
+You can customize the location of workspaces and logs by setting environment variables before running the container:
+- `WORKSPACE_BASE`: Sets the base directory for AIDE workspaces (default: `$(pwd)/workspaces`)
+- `LOGS_DIR`: Sets the directory for AIDE logs (default: `$(pwd)/logs`)
+
 Contribution guide will be available soon.
 
 ## Algorithm Description
