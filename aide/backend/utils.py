@@ -8,6 +8,27 @@ FunctionCallType = dict
 OutputType = str | FunctionCallType
 
 
+import backoff
+import logging
+from typing import Callable
+
+logger = logging.getLogger("aide")
+
+
+@backoff.on_predicate(
+    wait_gen=backoff.expo,
+    max_value=60,
+    factor=1.5,
+)
+def backoff_create(
+    create_fn: Callable, retry_exceptions: list[Exception], *args, **kwargs
+):
+    try:
+        return create_fn(*args, **kwargs)
+    except retry_exceptions as e:
+        logger.info(f"Backoff exception: {e}")
+        return False
+
 def opt_messages_to_list(
     system_message: str | None, user_message: str | None
 ) -> list[dict[str, str]]:
