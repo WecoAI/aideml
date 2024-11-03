@@ -89,3 +89,4 @@ PyPDF
 pyocr
 pyarrow
 xlrd
+backoff

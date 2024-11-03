@@ -2,23 +2,25 @@
 
 import time
 
-from anthropic import Anthropic, RateLimitError
-from .utils import FunctionSpec, OutputType, opt_messages_to_list
-from funcy import notnone, once, retry, select_values
+from .utils import FunctionSpec, OutputType, opt_messages_to_list, backoff_create
+from funcy import notnone, once, select_values
+import anthropic
 
-_client: Anthropic = None  # type: ignore
+_client: anthropic.Anthropic = None  # type: ignore
 
-RATELIMIT_RETRIES = 5
-retry_exp = retry(RATELIMIT_RETRIES, errors=RateLimitError, timeout=lambda a: 2 ** (a + 1))  # type: ignore
+ANTHROPIC_TIMEOUT_EXCEPTIONS = (
+    anthropic.RateLimitError,
+    anthropic.APIConnectionError,
+    anthropic.APITimeoutError,
+    anthropic.InternalServerError,
+)
 
 
 @once
 def _setup_anthropic_client():
     global _client
-    _client = Anthropic()
+    _client = anthropic.Anthropic(max_retries=0)
 
-
-@retry_exp
 def query(
     system_message: str | None,
     user_message: str | None,
@@ -48,7 +50,12 @@ def query(
     messages = opt_messages_to_list(None, user_message)
 
     t0 = time.time()
-    message = _client.messages.create(messages=messages, **filtered_kwargs)  # type: ignore
+    message = backoff_create(
+        _client.messages.create,
+        ANTHROPIC_TIMEOUT_EXCEPTIONS,
+        messages=messages,
+        **filtered_kwargs,
+    )
     req_time = time.time() - t0
 
     assert len(message.content) == 1 and message.content[0].type == "text"

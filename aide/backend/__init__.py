@@ -33,6 +33,14 @@ def query(
         "max_tokens": max_tokens,
     }
 
+    # Handle models with beta limitations
+    # ref: https://platform.openai.com/docs/guides/reasoning/beta-limitations
+    if model.startswith("o1-"):
+        if system_message:
+            user_message = system_message
+        system_message = None
+        model_kwargs["temperature"] = 1
+
     query_func = backend_anthropic.query if "claude-" in model else backend_openai.query
     output, req_time, in_tok_count, out_tok_count, info = query_func(
         system_message=compile_prompt_to_md(system_message) if system_message else None,
