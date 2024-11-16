@@ -2,6 +2,8 @@ import gradio as gr
 from pathlib import Path
 import tempfile
 import shutil
+
+from aide.webui.tree_viz import create_tree_visualization
 from .. import Experiment
 from ..utils.tree_export import generate_html, cfg_to_tree_struct, generate as tree_export_generate
 from rich.console import Console
@@ -22,6 +24,9 @@ import textwrap
 import numpy as np
 from igraph import Graph
 import webbrowser
+from .tree_viz import create_tree_visualization
+
+from aide import journal
 
 console = Console(file=sys.stderr)
 
@@ -177,13 +182,13 @@ def create_ui():
                             show_label=True
                         )
                     with gr.TabItem("Tree Visualization"):
-                        tree_output = gr.HTML()
+                        tree_viz = create_tree_visualization(journal)  # Add when journal is available
 
         # Connect the buttons
         run_btn.click(
             fn=run_aide,
             inputs=[openai_api_key, anthropic_api_key, data_dir, goal_text, eval_text, num_steps],
-            outputs=[output_code, config_output, journal_output, tree_output]
+            outputs=[output_code, config_output, journal_output, tree_viz]
         )
 
         load_example_btn.click(
