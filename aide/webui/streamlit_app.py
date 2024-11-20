@@ -69,13 +69,14 @@ def load_example_files():
     
     return example_files
 
-def run_aide(files, goal_text, eval_text, num_steps):
+def run_aide(files, goal_text, eval_text, num_steps, results_col):
     try:
-        # Create placeholders first
-        status_placeholder = st.empty()
-        step_placeholder = st.empty()
-        config_placeholder = st.empty()
-        progress_placeholder = st.empty()
+        # Create placeholders in the results column
+        with results_col:
+            status_placeholder = st.empty()
+            step_placeholder = st.empty()
+            config_placeholder = st.empty()
+            progress_placeholder = st.empty()
         
         # Initialize session state
         st.session_state.is_running = True
@@ -113,26 +114,32 @@ def run_aide(files, goal_text, eval_text, num_steps):
             eval=eval_text
         )
         
-        # Update status and config immediately
-        status_placeholder.markdown("### 🔄 AIDE is working...")
-        step_placeholder.markdown(f"**Step {st.session_state.current_step}/{num_steps}**")
-        config_placeholder.markdown("### 📋 Configuration")
-        config_placeholder.code(OmegaConf.to_yaml(experiment.cfg), language="yaml")
-        progress_placeholder.progress(0)
+        # Update status and config immediately in results column
+        with results_col:
+            status_placeholder.markdown("### 🔄 AIDE is working...")
+            step_placeholder.markdown(f"**Step {st.session_state.current_step}/{num_steps}**")
+            config_placeholder.markdown("### 📋 Configuration")
+            config_placeholder.code(OmegaConf.to_yaml(experiment.cfg), language="yaml")
+            progress_placeholder.progress(0)
 
         # Run experiment with progress updates
         for step in range(num_steps):
             st.session_state.current_step = step + 1
             progress = (step + 1) / num_steps
             
-            # Update UI
-            step_placeholder.markdown(f"**Step {st.session_state.current_step}/{num_steps}**")
-            progress_placeholder.progress(progress)
+            # Update UI in results column
+            with results_col:
+                step_placeholder.markdown(f"**Step {st.session_state.current_step}/{num_steps}**")
+                progress_placeholder.progress(progress)
             
             experiment.run(steps=1)
 
-        # Clear running state
+        # Clear running state and status messages
         st.session_state.is_running = False
+        status_placeholder.empty()  # Clear the "AIDE is working..." message
+        step_placeholder.empty()    # Clear step counter
+        progress_placeholder.empty() # Clear progress bar
+        config_placeholder.empty() # Clear config
         
         return {
             "solution": (experiment.cfg.log_dir / "best_solution.py").read_text() if (experiment.cfg.log_dir / "best_solution.py").exists() else "No solution found",
@@ -151,107 +158,106 @@ def run_aide(files, goal_text, eval_text, num_steps):
         console.print_exception()
         st.error(f"Error occurred: {str(e)}")
         return None
-
 def main():
     st.set_page_config(page_title="AIDE: AI Development Environment", layout="wide")
     
-    # Load environment variables at startup
-    env_vars = load_env_variables()
-    results = {}
+    # Add a settings menu in the sidebar
+    with st.sidebar:
+        st.header("⚙️ Settings")
+        env_vars = load_env_variables()
+        
+        # API Keys in sidebar
+        openai_key = st.text_input(
+            "OpenAI API Key",
+            value=env_vars['openai_key'],
+            type="password"
+        )
+        anthropic_key = st.text_input(
+            "Anthropic API Key",
+            value=env_vars['anthropic_key'],
+            type="password"
+        )
+        if st.button("Save API Keys", use_container_width=True):
+            st.session_state.openai_key = openai_key
+            st.session_state.anthropic_key = anthropic_key
+            st.success("API keys saved!")
     
     # Title and description
     st.title("AIDE: AI Development Environment")
     st.markdown("An LLM agent that generates solutions for machine learning tasks from natural language descriptions.")
 
-    # Initialize session state for example files if it doesn't exist
-    if 'example_files' not in st.session_state:
-        st.session_state.example_files = []
-
-    # Main content area
-    st.header("Input")
+    # Create columns for input and results (1:2 ratio)
+    input_col, results_col = st.columns([1, 2])
     
-    # Create two columns for the buttons
-    button_col1, button_col2 = st.columns(2)
-    
-    # Example files button
-    with button_col1:
+    with input_col:
+        st.header("Input")
+        
+        # Load example button
         if st.button("Load Example Experiment", use_container_width=True):
             st.session_state.example_files = load_example_files()
-    
-    # API Keys button
-    with button_col2:
-        with st.expander("Load API Keys", expanded=False):
-            openai_key = st.text_input(
-                "OpenAI API Key",
-                value=env_vars['openai_key'],
-                type="password"
+        
+        # File uploader and other inputs
+        if st.session_state.get('example_files'):
+            st.info("Example files loaded! Click 'Run AIDE' to proceed.")
+            st.write("Loaded files:")
+            for file in st.session_state.example_files:
+                st.write(f"- {file['name']}")
+            uploaded_files = st.session_state.example_files
+        else:
+            uploaded_files = st.file_uploader(
+                "Upload Data Files",
+                accept_multiple_files=True,
+                type=["csv", "txt", "json", "md"]
             )
-            anthropic_key = st.text_input(
-                "Anthropic API Key",
-                value=env_vars['anthropic_key'],
-                type="password"
-            )
-            if st.button("Save API Keys", use_container_width=True):
-                st.session_state.openai_key = openai_key
-                st.session_state.anthropic_key = anthropic_key
-                st.success("API keys saved!")
-    
-    # File uploader and other inputs
-    if st.session_state.example_files:
-        st.info("Example files loaded! Click 'Run AIDE' to proceed.")
-        st.write("Loaded files:")
-        for file in st.session_state.example_files:
-            st.write(f"- {file['name']}")
-        uploaded_files = st.session_state.example_files
-    else:
-        uploaded_files = st.file_uploader(
-            "Upload Data Files",
-            accept_multiple_files=True,
-            type=["csv", "txt", "json", "md"]
+        
+        goal_text = st.text_area(
+            "Goal",
+            value=st.session_state.get("goal", ""),
+            placeholder="Example: Predict house prices"
         )
-    
-    goal_text = st.text_area(
-        "Goal",
-        value=st.session_state.get("goal", ""),
-        placeholder="Example: Predict house prices"
-    )
-    
-    eval_text = st.text_area(
-        "Evaluation Criteria",
-        value=st.session_state.get("eval", ""),
-        placeholder="Example: Use RMSE metric"
-    )
-    
-    num_steps = st.slider(
-        "Number of Steps",
-        min_value=1,
-        max_value=20,
-        value=st.session_state.get("steps", 10)
-    )
+        
+        eval_text = st.text_area(
+            "Evaluation Criteria",
+            value=st.session_state.get("eval", ""),
+            placeholder="Example: Use RMSE metric"
+        )
+        
+        num_steps = st.slider(
+            "Number of Steps",
+            min_value=1,
+            max_value=20,
+            value=st.session_state.get("steps", 10)
+        )
 
-    if st.button("Run AIDE", type="primary"):
-        results = run_aide(uploaded_files, goal_text, eval_text, num_steps)
+        # Run button and execution
+        if st.button("Run AIDE", type="primary", use_container_width=True):
+            with st.spinner("Running AIDE..."):
+                results = run_aide(uploaded_files, goal_text, eval_text, num_steps, results_col)
+                st.session_state.results = results
 
-    # Results section below
-    st.header("Results")
-    tabs = st.tabs(["Best Solution", "Config", "Journal", "Tree Visualization"])
-    
-    with tabs[0]:
-        if results and "solution" in results:
-            st.code(results["solution"], language="python")
-    
-    with tabs[1]:
-        if results and "config" in results:
-            st.code(results["config"], language="yaml")
-    
-    with tabs[2]:
-        if results and "journal" in results:
-            st.code(results["journal"], language="json")
-    
-    with tabs[3]:
-        if results and "tree_path" in results and os.path.exists(results["tree_path"]):
-            with open(results["tree_path"], 'r', encoding='utf-8') as f:
-                components.html(f.read(), height=600, scrolling=True)
+    # Results column
+    with results_col:
+        st.header("Results")
+        if st.session_state.get('results'):
+            results = st.session_state.results
+            tabs = st.tabs(["Best Solution", "Config", "Journal", "Tree Visualization"])
+            
+            with tabs[0]:
+                if "solution" in results:
+                    st.code(results["solution"], language="python")
+            
+            with tabs[1]:
+                if "config" in results:
+                    st.code(results["config"], language="yaml")
+            
+            with tabs[2]:
+                if "journal" in results:
+                    st.code(results["journal"], language="json")
+            
+            with tabs[3]:
+                if "tree_path" in results and os.path.exists(results["tree_path"]):
+                    with open(results["tree_path"], 'r', encoding='utf-8') as f:
+                        components.html(f.read(), height=600, scrolling=True)
 
 if __name__ == "__main__":
     main() 
