@@ -11,22 +11,39 @@ import sys
 import textwrap
 import numpy as np
 from igraph import Graph
+from dotenv import load_dotenv
 
-from aide.webui.tree_viz import create_tree_visualization
 from aide import Experiment
 from aide.utils.tree_export import generate_html, cfg_to_tree_struct, generate as tree_export_generate
-from aide.utils.config import load_task_desc, prep_agent_workspace, save_run, prep_cfg
+from aide.utils.config import load_task_desc, prep_agent_workspace, save_run, prep_cfg, load_cfg
 from aide.journal import Journal
 from aide.agent import Agent
 from aide.interpreter import Interpreter
 
 console = Console(file=sys.stderr)
 
+def load_env_variables():
+    """Load environment variables from .env file"""
+    # Load from .env file if it exists
+    load_dotenv()
+    
+    # Get API keys from environment with fallback to empty string
+    return {
+        'openai_key': os.getenv("OPENAI_API_KEY", ""),
+        'anthropic_key': os.getenv("ANTHROPIC_API_KEY", "")
+    }
+
 def load_example_files():
     """Load the house prices example files into memory"""
-    example_dir = Path(__file__).parent / "example_tasks" / "house_prices"
-    example_files = []
+    # Get the package directory where example tasks are stored
+    package_root = Path(__file__).parent.parent
+    example_dir = package_root / "example_tasks" / "house_prices"
     
+    if not example_dir.exists():
+        st.error(f"Example directory not found at: {example_dir}")
+        return []
+        
+    example_files = []
     for file_path in example_dir.glob("*"):
         if file_path.suffix.lower() in ['.csv', '.txt', '.json', '.md']:
             # Create a NamedTemporaryFile object with the file content
@@ -37,17 +54,28 @@ def load_example_files():
                     'path': tmp_file.name
                 })
     
+    if not example_files:
+        st.warning("No example files found in the example directory")
+    
+    # Set example goal and eval criteria from README
+    st.session_state["goal"] = "Predict the sales price for each house"
+    st.session_state["eval"] = "Use the RMSE metric between the logarithm of the predicted and observed values."
+    
     return example_files
 
 def run_aide(files, goal_text, eval_text, num_steps):
     try:
+        # Set running state
+        st.session_state.is_running = True
+        st.session_state.current_step = 0  # Initialize step counter
+        
         # Set API keys from session state
         if st.session_state.get('openai_key'):
             os.environ["OPENAI_API_KEY"] = st.session_state.openai_key
         if st.session_state.get('anthropic_key'):
             os.environ["ANTHROPIC_API_KEY"] = st.session_state.anthropic_key
 
-        # Create input directory
+        # Create input directory in the project root
         project_root = Path(__file__).parent.parent.parent
         input_dir = project_root / "input"
         input_dir.mkdir(parents=True, exist_ok=True)
@@ -68,66 +96,87 @@ def run_aide(files, goal_text, eval_text, num_steps):
         experiment = Experiment(
             data_dir=str(input_dir),
             goal=goal_text,
-            eval=eval_text,
-            steps=num_steps
+            eval=eval_text
         )
         
-        # Run experiment with progress bar
-        progress_bar = st.progress(0)
-        for step in range(num_steps):
-            progress_bar.progress((step + 1) / num_steps)
-            experiment.step()
+        # Store config in session state immediately
+        st.session_state.current_config = OmegaConf.to_yaml(experiment.cfg)
 
+        # Run experiment with progress updates
+        for step in range(num_steps):
+            st.session_state.current_step = step + 1  # Update step counter
+            progress = (step + 1) / num_steps
+            st.session_state.progress = progress
+            experiment.run(steps=1)
+
+        # Clear running state
+        st.session_state.is_running = False
+        
         return {
-            "solution": (experiment.cfg.workspace_dir / "best_solution.py").read_text(),
+            "solution": (experiment.cfg.log_dir / "best_solution.py").read_text() if (experiment.cfg.log_dir / "best_solution.py").exists() else "No solution found",
             "config": OmegaConf.to_yaml(experiment.cfg),
             "journal": json.dumps(experiment.journal.to_dict(), indent=2),
             "tree_path": str(experiment.cfg.log_dir / "tree_plot.html")
         }
 
     except Exception as e:
+        st.session_state.is_running = False
         console.print_exception()
         st.error(f"Error occurred: {str(e)}")
         return None
 
 def main():
     st.set_page_config(page_title="AIDE: AI Development Environment", layout="wide")
-
+    
+    # Load environment variables at startup
+    env_vars = load_env_variables()
+    
+    # Initialize results
+    results = {}
+    
     # Title and description
     st.title("AIDE: AI Development Environment")
     st.markdown("An LLM agent that generates solutions for machine learning tasks from natural language descriptions.")
 
-    # Sidebar for configuration
-    with st.sidebar:
-        st.header("Configuration")
-        
-        # API Keys
-        st.session_state.openai_key = st.text_input(
-            "OpenAI API Key",
-            type="password",
-            value=os.getenv("OPENAI_API_KEY", "")
-        )
-        st.session_state.anthropic_key = st.text_input(
-            "Anthropic API Key (Optional)",
-            type="password",
-            value=os.getenv("ANTHROPIC_API_KEY", "")
-        )
+    # Initialize session state for example files if it doesn't exist
+    if 'example_files' not in st.session_state:
+        st.session_state.example_files = []
 
-        # Load example button
-        if st.button("Load Example"):
-            example_data = load_example_files()
-            st.session_state.update(example_data)
-
-    # Main content area
+    # Main content area - top row for input and config
     col1, col2 = st.columns([1, 2])
 
     with col1:
         st.header("Input")
         
+        # Create two columns for the buttons
+        button_col1, button_col2 = st.columns(2)
+        
+        # Example files button
+        with button_col1:
+            if st.button("Load Example Experiment", use_container_width=True):
+                st.session_state.example_files = load_example_files()
+        
+        # API Keys button
+        with button_col2:
+            with st.expander("Load API Keys", expanded=False):
+                openai_key = st.text_input(
+                    "OpenAI API Key",
+                    value=env_vars['openai_key'],
+                    type="password"
+                )
+                anthropic_key = st.text_input(
+                    "Anthropic API Key",
+                    value=env_vars['anthropic_key'],
+                    type="password"
+                )
+                if st.button("Save API Keys", use_container_width=True):
+                    st.session_state.openai_key = openai_key
+                    st.session_state.anthropic_key = anthropic_key
+                    st.success("API keys saved!")
+        
         # File uploader
         if st.session_state.example_files:
             st.info("Example files loaded! Click 'Run AIDE' to proceed.")
-            # Display the names of loaded example files
             st.write("Loaded files:")
             for file in st.session_state.example_files:
                 st.write(f"- {file['name']}")
@@ -160,29 +209,54 @@ def main():
 
         if st.button("Run AIDE", type="primary"):
             results = run_aide(uploaded_files, goal_text, eval_text, num_steps)
-            if results:
-                st.session_state.results = results
 
     with col2:
-        st.header("Results")
-        tabs = st.tabs(["Best Solution", "Config", "Journal", "Tree Visualization"])
+        st.header("Configuration")
         
-        if "results" in st.session_state:
-            results = st.session_state.results
+        # Create placeholders for dynamic content
+        status_placeholder = st.empty()
+        step_placeholder = st.empty()
+        config_placeholder = st.empty()
+        progress_placeholder = st.empty()
+        
+        # Show running status and config
+        if st.session_state.get("is_running", False):
+            # Show status
+            status_placeholder.markdown("### 🔄 AIDE is working...")
             
-            with tabs[0]:
-                st.code(results["solution"], language="python")
+            # Show step counter
+            current_step = st.session_state.get("current_step", 0)
+            total_steps = st.session_state.get("total_steps", num_steps)
+            step_placeholder.markdown(f"**Step {current_step}/{total_steps}**")
             
-            with tabs[1]:
-                st.code(results["config"], language="yaml")
+            # Show configuration
+            if "current_config" in st.session_state:
+                config_placeholder.code(st.session_state.current_config, language="yaml")
             
-            with tabs[2]:
-                st.code(results["journal"], language="json")
-            
-            with tabs[3]:
-                if os.path.exists(results["tree_path"]):
-                    with open(results["tree_path"], 'r', encoding='utf-8') as f:
-                        components.html(f.read(), height=600, scrolling=True)
+            # Show progress bar
+            progress = st.session_state.get("progress", 0)
+            progress_placeholder.progress(progress)
+
+    # Results section below
+    st.header("Results")
+    tabs = st.tabs(["Best Solution", "Config", "Journal", "Tree Visualization"])
+    
+    with tabs[0]:
+        if results and "solution" in results:
+            st.code(results["solution"], language="python")
+    
+    with tabs[1]:
+        if results and "config" in results:
+            st.code(results["config"], language="yaml")
+    
+    with tabs[2]:
+        if results and "journal" in results:
+            st.code(results["journal"], language="json")
+    
+    with tabs[3]:
+        if results and "tree_path" in results and os.path.exists(results["tree_path"]):
+            with open(results["tree_path"], 'r', encoding='utf-8') as f:
+                components.html(f.read(), height=600, scrolling=True)
 
 if __name__ == "__main__":
     main() 
