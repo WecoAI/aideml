@@ -12,6 +12,21 @@ import textwrap
 import numpy as np
 from igraph import Graph
 from dotenv import load_dotenv
+import logging
+
+# Set up logging configuration
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        # Stream handler to write to stderr (will show in Streamlit)
+        logging.StreamHandler(sys.stderr)
+    ]
+)
+
+# Get the aide logger
+logger = logging.getLogger("aide")
+logger.setLevel(logging.INFO)
 
 from aide import Experiment
 from aide.utils.tree_export import generate_html, cfg_to_tree_struct, generate as tree_export_generate
@@ -44,7 +59,6 @@ def load_example_files():
         return []
         
     example_files = []
-    desc_content = ""
     
     for file_path in example_dir.glob("*"):
         if file_path.suffix.lower() in ['.csv', '.txt', '.json', '.md']:
@@ -75,9 +89,9 @@ def run_aide(files, goal_text, eval_text, num_steps, results_col):
         with results_col:
             status_placeholder = st.empty()
             step_placeholder = st.empty()
+            config_title_placeholder = st.empty()
             config_placeholder = st.empty()
             progress_placeholder = st.empty()
-        
         # Initialize session state
         st.session_state.is_running = True
         st.session_state.current_step = 0
@@ -115,12 +129,10 @@ def run_aide(files, goal_text, eval_text, num_steps, results_col):
         )
         
         # Update status and config immediately in results column
-        with results_col:
-            status_placeholder.markdown("### 🔄 AIDE is working...")
-            step_placeholder.markdown(f"**Step {st.session_state.current_step}/{num_steps}**")
-            config_placeholder.markdown("### 📋 Configuration")
-            config_placeholder.code(OmegaConf.to_yaml(experiment.cfg), language="yaml")
-            progress_placeholder.progress(0)
+        step_placeholder.markdown(f"### 🔥 Running Step {st.session_state.current_step}/{num_steps}")
+        config_title_placeholder.markdown("### 📋 Configuration")
+        config_placeholder.code(OmegaConf.to_yaml(experiment.cfg), language="yaml")
+        progress_placeholder.progress(0)
 
         # Run experiment with progress updates
         for step in range(num_steps):
@@ -129,17 +141,18 @@ def run_aide(files, goal_text, eval_text, num_steps, results_col):
             
             # Update UI in results column
             with results_col:
-                step_placeholder.markdown(f"**Step {st.session_state.current_step}/{num_steps}**")
+                step_placeholder.markdown(f"### 🔥 Running Step {st.session_state.current_step}/{num_steps}")
                 progress_placeholder.progress(progress)
             
             experiment.run(steps=1)
 
         # Clear running state and status messages
         st.session_state.is_running = False
-        status_placeholder.empty()  # Clear the "AIDE is working..." message
-        step_placeholder.empty()    # Clear step counter
-        progress_placeholder.empty() # Clear progress bar
-        config_placeholder.empty() # Clear config
+        status_placeholder.empty()      # Clear the "AIDE is working..." message
+        step_placeholder.empty()        # Clear step counter
+        config_placeholder.empty()      # Clear config
+        config_title_placeholder.empty()
+        progress_placeholder.empty()    # Clear progress bar
         
         return {
             "solution": (experiment.cfg.log_dir / "best_solution.py").read_text() if (experiment.cfg.log_dir / "best_solution.py").exists() else "No solution found",
@@ -180,16 +193,22 @@ def main():
         env_vars = load_env_variables()
         
         # API Keys in sidebar
+        st.markdown("<p style='text-align: center;'>OpenAI API Key</p>", unsafe_allow_html=True)
         openai_key = st.text_input(
             "OpenAI API Key",
             value=env_vars['openai_key'],
-            type="password"
+            type="password",
+            label_visibility="collapsed"
         )
+        
+        st.markdown("<p style='text-align: center;'>Anthropic API Key</p>", unsafe_allow_html=True)
         anthropic_key = st.text_input(
             "Anthropic API Key",
             value=env_vars['anthropic_key'],
-            type="password"
+            type="password",
+            label_visibility="collapsed"
         )
+        
         if st.button("Save API Keys", use_container_width=True):
             st.session_state.openai_key = openai_key
             st.session_state.anthropic_key = anthropic_key
@@ -197,8 +216,7 @@ def main():
     
     # Title and description
     st.title("AIDE: the Machine Learning Engineer Agent")
-    st.markdown("An LLM agent that generates solutions for machine learning tasks from natural language descriptions.")
-
+    st.markdown("An LLM agent that generates solutions for machine learning tasks just from natural language descriptions of the task.")    
     # Create columns for input and results (1:2 ratio)
     input_col, results_col = st.columns([1, 2])
     
@@ -244,7 +262,7 @@ def main():
 
         # Run button and execution
         if st.button("Run AIDE", type="primary", use_container_width=True):
-            with st.spinner("Running AIDE..."):
+            with st.spinner("AIDE is running..."):
                 results = run_aide(uploaded_files, goal_text, eval_text, num_steps, results_col)
                 st.session_state.results = results
 
@@ -268,9 +286,26 @@ def main():
                     st.code(results["journal"], language="json")
             
             with tabs[3]:
-                if "tree_path" in results and os.path.exists(results["tree_path"]):
-                    with open(results["tree_path"], 'r', encoding='utf-8') as f:
-                        components.html(f.read(), height=600, scrolling=True)
+                if "tree_path" in results:
+                    try:
+                        tree_path = Path(results["tree_path"])
+                        if tree_path.exists():
+                            with open(tree_path, 'r', encoding='utf-8') as f:
+                                html_content = f.read()
+                            
+                            components.html(
+                                html_content,
+                                height=800,  # Increased height for better visibility
+                                width=None,  # Let it adapt to container width
+                                scrolling=True
+                            )
+                        else:
+                            st.error(f"Tree visualization file not found at: {tree_path}")
+                    except Exception as e:
+                        st.error(f"Error loading tree visualization: {str(e)}")
+                        logger.error(f"Tree visualization error: {e}", exc_info=True)
+                else:
+                    st.info("No tree visualization available for this run.")
 
 if __name__ == "__main__":
     main() 
