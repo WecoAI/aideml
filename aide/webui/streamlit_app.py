@@ -158,8 +158,21 @@ def run_aide(files, goal_text, eval_text, num_steps, results_col):
         console.print_exception()
         st.error(f"Error occurred: {str(e)}")
         return None
+
+def load_css():
+    """Load custom CSS from streamlit_app_style.css"""
+    css_file = Path(__file__).parent / "streamlit_app_style.css"
+    if css_file.exists():
+        with open(css_file) as f:
+            st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+    else:
+        st.warning(f"CSS file not found at: {css_file}")
+
 def main():
-    st.set_page_config(page_title="AIDE: AI Development Environment", layout="wide")
+    st.set_page_config(page_title="AIDE: the Machine Learning Engineer Agent", layout="wide")
+    
+    # Load custom CSS
+    load_css()
     
     # Add a settings menu in the sidebar
     with st.sidebar:
@@ -183,7 +196,7 @@ def main():
             st.success("API keys saved!")
     
     # Title and description
-    st.title("AIDE: AI Development Environment")
+    st.title("AIDE: the Machine Learning Engineer Agent")
     st.markdown("An LLM agent that generates solutions for machine learning tasks from natural language descriptions.")
 
     # Create columns for input and results (1:2 ratio)

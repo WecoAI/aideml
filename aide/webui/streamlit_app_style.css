@@ -1,0 +1,45 @@
+/* Main colors */
+:root {
+    --background: #F0EFE9;
+    --card: #FFFFFF;
+    --primary: #2D2D2D;
+    --wecopink: #FF4D8D;
+    --border: #D4D1C7;
+}
+
+/* Main container */
+.stApp {
+    background-color: var(--background);
+}
+
+/* Widgets */
+.stSelectbox,
+.stTextInput,
+.stNumberInput {
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+}
+
+/* Buttons */
+.stButton>button {
+    background-color: var(--wecopink);
+    color: white;
+    border-radius: 0.4rem;
+    border: none;
+    padding: 0.5rem 1rem;
+    transition: opacity 0.2s;
+}
+
+.stButton>button:hover {
+    opacity: 0.9;
+}
+
+/* Cards/containers */
+.css-1d391kg {  /* Sidebar */
+    background-color: var(--card);
+}
+
+.stMarkdown {
+    color: var(--primary);
+}
