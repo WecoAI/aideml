@@ -1,271 +1,110 @@
-import gradio as gr
+import streamlit as st
+import streamlit.components.v1 as components
 from pathlib import Path
 import tempfile
 import shutil
-
-from aide.webui.tree_viz import create_tree_visualization
-from .. import Experiment
-from ..utils.tree_export import generate_html, cfg_to_tree_struct, generate as tree_export_generate
+import os
+import json
+from omegaconf import OmegaConf
 from rich.console import Console
 import sys
-from omegaconf import OmegaConf
-from ..utils.config import load_task_desc, prep_agent_workspace, save_run, prep_cfg
-from ..journal import Journal
-from ..agent import Agent
-from ..interpreter import Interpreter
-import json
-from .. import run as aide_run
-import os
-from rich.markdown import Markdown
-from rich import print_json
-import time
-import json
 import textwrap
 import numpy as np
 from igraph import Graph
-import webbrowser
-from .tree_viz import create_tree_visualization
+from dotenv import load_dotenv
+import logging
 
-from aide import journal
+# Set up logging configuration
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        # Stream handler to write to stderr (will show in Streamlit)
+        logging.StreamHandler(sys.stderr)
+    ]
+)
+
+# Get the aide logger
+logger = logging.getLogger("aide")
+logger.setLevel(logging.INFO)
+
+from aide import Experiment
+from aide.utils.tree_export import generate_html, cfg_to_tree_struct, generate as tree_export_generate
+from aide.utils.config import load_task_desc, prep_agent_workspace, save_run, prep_cfg, load_cfg
+from aide.journal import Journal
+from aide.agent import Agent
+from aide.interpreter import Interpreter
 
 console = Console(file=sys.stderr)
 
-def load_example_task():
-    """Load the house prices example task"""
-    example_dir = Path(__file__).parent.parent / "example_tasks" / "house_prices"
+def load_env_variables():
+    """Load environment variables from .env file"""
+    # Load from .env file if it exists
+    load_dotenv()
     
-    # Just return the file paths directly
-    temp_files = []
+    # Get API keys from environment with fallback to empty string
+    return {
+        'openai_key': os.getenv("OPENAI_API_KEY", ""),
+        'anthropic_key': os.getenv("ANTHROPIC_API_KEY", "")
+    }
+
+def load_example_files():
+    """Load the house prices example files into memory"""
+    # Get the package directory where example tasks are stored
+    package_root = Path(__file__).parent.parent
+    example_dir = package_root / "example_tasks" / "house_prices"
+    
+    if not example_dir.exists():
+        st.error(f"Example directory not found at: {example_dir}")
+        return []
+        
+    example_files = []
+    
     for file_path in example_dir.glob("*"):
         if file_path.suffix.lower() in ['.csv', '.txt', '.json', '.md']:
-            temp_files.append(str(file_path))  # Convert Path to string
+            # Store description file content separately
+            if file_path.name == "data_description.txt":
+                desc_content = file_path.read_text()
+            
+            # Create a NamedTemporaryFile object with the file content
+            with tempfile.NamedTemporaryFile(delete=False, suffix=file_path.suffix) as tmp_file:
+                tmp_file.write(file_path.read_bytes())
+                example_files.append({
+                    'name': file_path.name,
+                    'path': tmp_file.name
+                })
     
-    example_goal = "Predict the sales price for each house"
-    example_eval = "Use the RMSE metric between the logarithm of the predicted and observed values."
-    return temp_files, example_goal, example_eval, 10
+    if not example_files:
+        st.warning("No example files found in the example directory")
+    
+    # Set example goal and eval criteria from README
+    st.session_state["goal"] = "Predict the sales price for each house"
+    st.session_state["eval"] = "Use the RMSE metric between the logarithm of the predicted and observed values."
+    
+    return example_files
 
-def load_previous_experiment(exp_dir: str):
-    """Load results from a previous experiment directory"""
+def run_aide(files, goal_text, eval_text, num_steps, results_col):
     try:
-        exp_path = Path(exp_dir)
-        if not exp_path.exists():
-            return f"Error: Directory {exp_dir} does not exist", None, None, None
-            
-        # Load the best solution file
-        solution_path = exp_path / "best_solution.py"
-        if not solution_path.exists():
-            return "Error: No best solution file found in experiment directory", None, None, None
-            
-        # Load config file
-        config_path = exp_path / "config.yaml"
-        if not config_path.exists():
-            return "Error: No config file found in experiment directory", None, None, None
-        cfg = OmegaConf.load(config_path)
+        # Create placeholders in the results column
+        with results_col:
+            status_placeholder = st.empty()
+            step_placeholder = st.empty()
+            config_title_placeholder = st.empty()
+            config_placeholder = st.empty()
+            progress_placeholder = st.empty()
+        # Initialize session state
+        st.session_state.is_running = True
+        st.session_state.current_step = 0
+        st.session_state.total_steps = num_steps
+        st.session_state.progress = 0
         
-        # Load journal file
-        journal_path = exp_path / "journal.json"
-        if not journal_path.exists():
-            return "Error: No journal file found in experiment directory", None, None, None
-        
-        with open(journal_path, 'r') as f:
-            journal_data = json.load(f)
-            
-        # Get tree visualization file path
-        tree_path = exp_path / "tree_plot.html"
-        # Use relative path from project root
-        relative_path = tree_path.relative_to(Path(__file__).parent.parent.parent)
-        tree_link = f"""
-        <a href="javascript:void(0)" 
-           onclick="fetch('/open-file?path={tree_path.absolute()}')" 
-           style="text-decoration: underline; color: blue; cursor: pointer;">
-           Open Tree Visualization
-        </a>
-        """
-        
-        # Add route to open file
-        @demo.app.get("/open-file")
-        def open_file(path: str):
-            webbrowser.open(f'file://{path}')
-            return {"status": "success"}
-        
-        return (
-            solution_path.read_text(),
-            OmegaConf.to_yaml(cfg),
-            json.dumps(journal_data, indent=2),
-            tree_link
-        )
-        
-    except Exception as e:
-        console.print_exception()
-        return f"Error loading experiment: {str(e)}", None, None, None
+        # Set API keys from session state
+        if st.session_state.get('openai_key'):
+            os.environ["OPENAI_API_KEY"] = st.session_state.openai_key
+        if st.session_state.get('anthropic_key'):
+            os.environ["ANTHROPIC_API_KEY"] = st.session_state.anthropic_key
 
-def create_ui():
-    with gr.Blocks(theme=gr.themes.Soft()) as demo:
-        # Centered title and description
-        gr.Markdown("""
-            <div style="text-align: center; margin-bottom: 2em;">
-                <h1 style="margin-bottom: 0.5em;">AIDE: AI Development Environment</h1>
-                <p>An LLM agent that generates solutions for machine learning tasks from natural language descriptions.</p>
-            </div>
-        """)
-        
-        with gr.Row():
-            # Left column for configuration
-            with gr.Column(scale=1):
-                with gr.Accordion("Configuration", open=True):
-                    openai_api_key = gr.Textbox(
-                        label="OpenAI API Key",
-                        type="password",
-                        value=os.getenv("OPENAI_API_KEY", "")
-                    )
-                    anthropic_api_key = gr.Textbox(
-                        label="Anthropic API Key (Optional)",
-                        type="password",
-                        value=os.getenv("ANTHROPIC_API_KEY", "")
-                    )
-                    data_dir = gr.File(
-                        label="Data Files",
-                        file_count="multiple",
-                        file_types=[".csv", ".txt", ".json", ".md"]
-                    )
-                    goal_text = gr.Textbox(
-                        label="Goal",
-                        placeholder="Example: Predict house prices",
-                        lines=3
-                    )
-                    eval_text = gr.Textbox(
-                        label="Evaluation Criteria",
-                        placeholder="Example: Use RMSE metric",
-                        lines=2
-                    )
-                    num_steps = gr.Slider(
-                        minimum=1,
-                        maximum=20,
-                        value=10,
-                        step=1,
-                        label="Number of Steps"
-                    )
-                    
-                    # Add experiment loading section
-                    with gr.Accordion("Load Previous Experiment", open=False):
-                        exp_dir = gr.Textbox(
-                            label="Experiment Directory",
-                            placeholder="Path to experiment directory (e.g., logs/exp_20240321_123456)",
-                            value="/Users/dex/Work/wecoai/aideml/logs/2-remarkable-aloof-llama",
-                            lines=1
-                        )
-                        load_exp_btn = gr.Button("Load Experiment")
-                    
-                    with gr.Row():
-                        load_example_btn = gr.Button("Load Example")
-                        run_btn = gr.Button("Run AIDE", variant="primary")
-
-            # Right column for results
-            with gr.Column(scale=2):
-                with gr.Tabs():
-                    with gr.TabItem("Best Solution"):
-                        output_code = gr.Code(
-                            label="Best Solution",
-                            language="python",
-                            show_label=True
-                        )
-                    with gr.TabItem("Config"):
-                        config_output = gr.Code(
-                            label="Configuration",
-                            language="yaml",
-                            show_label=True
-                        )
-                    with gr.TabItem("Journal"):
-                        journal_output = gr.Code(
-                            label="Journal",
-                            language="json",
-                            show_label=True
-                        )
-                    with gr.TabItem("Tree Visualization"):
-                        tree_viz = create_tree_visualization(journal)  # Add when journal is available
-
-        # Connect the buttons
-        run_btn.click(
-            fn=run_aide,
-            inputs=[openai_api_key, anthropic_api_key, data_dir, goal_text, eval_text, num_steps],
-            outputs=[output_code, config_output, journal_output, tree_viz]
-        )
-
-        load_example_btn.click(
-            fn=load_example_task,
-            inputs=[],
-            outputs=[data_dir, goal_text, eval_text, num_steps]
-        )
-        
-        # Add load experiment button handler
-        load_exp_btn.click(
-            fn=load_previous_experiment,
-            inputs=[exp_dir],
-            outputs=[output_code, config_output, journal_output, tree_output]
-        )
-
-    return demo
-
-def generate_layout(n_nodes, edges, layout_type='rt'):
-    layout = Graph(n_nodes, edges=edges, directed=True).layout(layout_type)
-    y_max = max(layout[k][1] for k in range(n_nodes))
-    layout_coords = []
-    for n in range(n_nodes):
-        layout_coords.append((layout[n][0], 2 * y_max - layout[n][1]))
-    return np.array(layout_coords)
-
-def normalize_layout(layout: np.ndarray):
-    """Normalize layout coordinates while handling edge cases"""
-    # Handle x coordinates
-    x_range = layout.max(axis=0)[0] - layout.min(axis=0)[0]
-    if x_range == 0:
-        layout[:, 0] = 0.5  # Center horizontally if all x values are same
-    else:
-        layout[:, 0] = (layout[:, 0] - layout.min(axis=0)[0]) / x_range
-
-    # Handle y coordinates
-    y_range = layout.max(axis=0)[1] - layout.min(axis=0)[1]
-    if y_range == 0:
-        layout[:, 1] = 0.5  # Center vertically if all y values are same
-    else:
-        layout[:, 1] = (layout[:, 1] - layout.min(axis=0)[1]) / y_range
-        
-    layout[:, 1] = 1 - layout[:, 1]  # Invert y axis
-    return layout
-
-def cfg_to_tree_struct(cfg, journal):
-    edges = [(node.step, child.step) for node in journal for child in node.children]
-    layout = normalize_layout(generate_layout(len(journal), edges))
-    metrics = np.array([0 for _ in journal])
-    tree_struct = {
-        'edges': edges,
-        'layout': layout.tolist(),
-        'plan': [textwrap.fill(node.plan, width=80) for node in journal.nodes],
-        'code': [node.code for node in journal],
-        'term_out': [node.term_out for node in journal],
-        'analysis': [node.analysis for node in journal],
-        'exp_name': cfg.exp_name,
-        'metrics': metrics.tolist(),
-    }
-    return tree_struct
-
-
-def create_tree_component():
-    return gr.HTML(
-        value="",
-        elem_classes=["tree-container"],
-        elem_id="tree-viz"
-    )
-
-def run_aide(openai_api_key, anthropic_api_key, files, goal_text, eval_text, num_steps, progress=gr.Progress(track_tqdm=True)):
-    try:
-        # Set API keys
-        if openai_api_key:
-            os.environ["OPENAI_API_KEY"] = openai_api_key
-        if anthropic_api_key:
-            os.environ["ANTHROPIC_API_KEY"] = anthropic_api_key
-
-        # Create input directory in the project root
+        # Create input directory
         project_root = Path(__file__).parent.parent.parent
         input_dir = project_root / "input"
         input_dir.mkdir(parents=True, exist_ok=True)
@@ -273,65 +112,200 @@ def run_aide(openai_api_key, anthropic_api_key, files, goal_text, eval_text, num
         # Handle uploaded files
         if files:
             for file in files:
-                shutil.copy2(file.name, input_dir)
+                if isinstance(file, dict):  # Example files
+                    shutil.copy2(file['path'], input_dir / file['name'])
+                else:  # Uploaded files
+                    with open(input_dir / file.name, 'wb') as f:
+                        f.write(file.getbuffer())
         else:
-            return "Error: Please upload data files", None, None, None
+            st.error("Please upload data files")
+            return None
 
-        # Load and prepare config
-        cfg = OmegaConf.load(Path(__file__).parent.parent / "utils" / "config.yaml")
-        cfg.data_dir = str(input_dir)
-        cfg.goal = goal_text
-        cfg.eval = eval_text
-        cfg.agent.steps = num_steps
-        
-        cfg = prep_cfg(cfg)
-        task_desc = load_task_desc(cfg)
-        prep_agent_workspace(cfg)
-
-        # Initialize components
-        journal = Journal()
-        agent = Agent(task_desc=task_desc, cfg=cfg, journal=journal)
-        interpreter = Interpreter(str(cfg.workspace_dir), **OmegaConf.to_container(cfg.exec))
-
-        # Execute steps with progress tracking
-        for step in range(num_steps):
-            progress(step/num_steps, f"Step {step + 1}/{num_steps}")
-            agent.step(exec_callback=interpreter.run)
-            save_run(cfg, journal)
-
-        progress(1.0, "Complete!")
-
-        # Read results
-        solution_path = cfg.workspace_dir / "best_solution.py"
-        solution_code = solution_path.read_text() if solution_path.exists() else "No solution generated"
-        
-        # Save tree visualization to file and get path
-        tree_struct = cfg_to_tree_struct(cfg, journal)
-        tree_path = cfg.workspace_dir / "tree_plot.html"
-        tree_export_generate(tree_struct, str(tree_path))
-        
-        return (
-            solution_code,
-            OmegaConf.to_yaml(cfg),
-            json.dumps(journal.to_dict(), indent=2),
-            str(tree_path.absolute())  # Return absolute path as string
+        # Initialize experiment
+        experiment = Experiment(
+            data_dir=str(input_dir),
+            goal=goal_text,
+            eval=eval_text
         )
+        
+        # Update status and config immediately in results column
+        step_placeholder.markdown(f"### 🔥 Running Step {st.session_state.current_step}/{num_steps}")
+        config_title_placeholder.markdown("### 📋 Configuration")
+        config_placeholder.code(OmegaConf.to_yaml(experiment.cfg), language="yaml")
+        progress_placeholder.progress(0)
+
+        # Run experiment with progress updates
+        for step in range(num_steps):
+            st.session_state.current_step = step + 1
+            progress = (step + 1) / num_steps
+            
+            # Update UI in results column
+            with results_col:
+                step_placeholder.markdown(f"### 🔥 Running Step {st.session_state.current_step}/{num_steps}")
+                progress_placeholder.progress(progress)
+            
+            experiment.run(steps=1)
+
+        # Clear running state and status messages
+        st.session_state.is_running = False
+        status_placeholder.empty()      # Clear the "AIDE is working..." message
+        step_placeholder.empty()        # Clear step counter
+        config_placeholder.empty()      # Clear config
+        config_title_placeholder.empty()
+        progress_placeholder.empty()    # Clear progress bar
+        
+        return {
+            "solution": (experiment.cfg.log_dir / "best_solution.py").read_text() if (experiment.cfg.log_dir / "best_solution.py").exists() else "No solution found",
+            "config": OmegaConf.to_yaml(experiment.cfg),
+            "journal": json.dumps([{
+                "step": node.step,
+                "code": str(node.code),
+                "metric": str(node.metric.value) if node.metric else None,
+                "is_buggy": node.is_buggy
+            } for node in experiment.journal.nodes], indent=2, default=str),
+            "tree_path": str(experiment.cfg.log_dir / "tree_plot.html")
+        }
 
     except Exception as e:
+        st.session_state.is_running = False
         console.print_exception()
-        return f"Error occurred: {str(e)}", None, None, None
+        st.error(f"Error occurred: {str(e)}")
+        return None
 
-def handle_tree_update(html_content):
-    """Handle tree visualization updates"""
-    # Return empty values since the actual updates are handled by JavaScript
-    return "", ""
+def load_css():
+    """Load custom CSS from style.css"""
+    css_file = Path(__file__).parent / "style.css"
+    if css_file.exists():
+        with open(css_file) as f:
+            st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+    else:
+        st.warning(f"CSS file not found at: {css_file}")
+
+def main():
+    st.set_page_config(page_title="AIDE: the Machine Learning Engineer Agent", layout="wide")
+    
+    # Load custom CSS
+    load_css()
+    
+    # Add a settings menu in the sidebar
+    with st.sidebar:
+        st.header("⚙️ Settings")
+        env_vars = load_env_variables()
+        
+        # API Keys in sidebar
+        st.markdown("<p style='text-align: center;'>OpenAI API Key</p>", unsafe_allow_html=True)
+        openai_key = st.text_input(
+            "OpenAI API Key",
+            value=env_vars['openai_key'],
+            type="password",
+            label_visibility="collapsed"
+        )
+        
+        st.markdown("<p style='text-align: center;'>Anthropic API Key</p>", unsafe_allow_html=True)
+        anthropic_key = st.text_input(
+            "Anthropic API Key",
+            value=env_vars['anthropic_key'],
+            type="password",
+            label_visibility="collapsed"
+        )
+        
+        if st.button("Save API Keys", use_container_width=True):
+            st.session_state.openai_key = openai_key
+            st.session_state.anthropic_key = anthropic_key
+            st.success("API keys saved!")
+    
+    # Title and description
+    st.title("AIDE: the Machine Learning Engineer Agent")
+    st.markdown("An LLM agent that generates solutions for machine learning tasks just from natural language descriptions of the task.")    
+    # Create columns for input and results (1:2 ratio)
+    input_col, results_col = st.columns([1, 2])
+    
+    with input_col:
+        st.header("Input")
+        
+        # Load example button
+        if st.button("Load Example Experiment", use_container_width=True):
+            st.session_state.example_files = load_example_files()
+        
+        # File uploader and other inputs
+        if st.session_state.get('example_files'):
+            st.info("Example files loaded! Click 'Run AIDE' to proceed.")
+            st.write("Loaded files:")
+            for file in st.session_state.example_files:
+                st.write(f"- {file['name']}")
+            uploaded_files = st.session_state.example_files
+        else:
+            uploaded_files = st.file_uploader(
+                "Upload Data Files",
+                accept_multiple_files=True,
+                type=["csv", "txt", "json", "md"]
+            )
+        
+        goal_text = st.text_area(
+            "Goal",
+            value=st.session_state.get("goal", ""),
+            placeholder="Example: Predict house prices"
+        )
+        
+        eval_text = st.text_area(
+            "Evaluation Criteria",
+            value=st.session_state.get("eval", ""),
+            placeholder="Example: Use RMSE metric"
+        )
+        
+        num_steps = st.slider(
+            "Number of Steps",
+            min_value=1,
+            max_value=20,
+            value=st.session_state.get("steps", 10)
+        )
+
+        # Run button and execution
+        if st.button("Run AIDE", type="primary", use_container_width=True):
+            with st.spinner("AIDE is running..."):
+                results = run_aide(uploaded_files, goal_text, eval_text, num_steps, results_col)
+                st.session_state.results = results
+
+    # Results column
+    with results_col:
+        st.header("Results")
+        if st.session_state.get('results'):
+            results = st.session_state.results
+            tabs = st.tabs(["Best Solution", "Config", "Journal", "Tree Visualization"])
+            
+            with tabs[0]:
+                if "solution" in results:
+                    st.code(results["solution"], language="python")
+            
+            with tabs[1]:
+                if "config" in results:
+                    st.code(results["config"], language="yaml")
+            
+            with tabs[2]:
+                if "journal" in results:
+                    st.code(results["journal"], language="json")
+            
+            with tabs[3]:
+                if "tree_path" in results:
+                    try:
+                        tree_path = Path(results["tree_path"])
+                        if tree_path.exists():
+                            with open(tree_path, 'r', encoding='utf-8') as f:
+                                html_content = f.read()
+                            
+                            components.html(
+                                html_content,
+                                height=800,  # Increased height for better visibility
+                                width=None,  # Let it adapt to container width
+                                scrolling=True
+                            )
+                        else:
+                            st.error(f"Tree visualization file not found at: {tree_path}")
+                    except Exception as e:
+                        st.error(f"Error loading tree visualization: {str(e)}")
+                        logger.error(f"Tree visualization error: {e}", exc_info=True)
+                else:
+                    st.info("No tree visualization available for this run.")
 
 if __name__ == "__main__":
-    demo = create_ui()
-    demo.launch(
-        share=False,  # Enable sharing
-        height=900,  # Ensure enough height for visualization
-        server_port=7860,  # Specify a port
-        allowed_paths=[str(Path(__file__).parent.parent.parent / "logs")],  # Allow serving files from logs directory
-        show_error=True
-    )
+    main() 
