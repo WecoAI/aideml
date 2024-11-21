@@ -1,0 +1,58 @@
+name: Bug
+description: Report a problem with AIDE
+title: '[Bug]: '
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: Thank you for taking the time to fill out this bug report. Please provide as much information as possible to help us understand and address the issue effectively.
+
+  - type: checkboxes
+    attributes:
+      label: Is there an existing issue for the same bug?
+      description: Please check if an issue already exists for the bug you encountered.
+      options:
+      - label: I have checked the existing issues.
+        required: true
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Describe the bug and reproduction steps
+      description: Provide a description of the issue along with any reproduction steps.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: installation
+    attributes:
+      label: AIDE Installation
+      description: How are you running AIDE?
+      options:
+        - Commandline
+        - Docker
+        - Python Script
+        - Other
+      default: 0
+
+  - type: input
+    id: aideml-version
+    attributes:
+      label: AIDE Version
+      description: What version of AIDE are you using?
+      placeholder: ex. 0.1.4, main, etc.
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - MacOS
+        - Linux
+        - WSL on Windows
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Logs, Errors, Screenshots, and Additional Context
+      description: Please provide any additional information you think might help.
