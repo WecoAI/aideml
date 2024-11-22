@@ -129,7 +129,7 @@ def run_aide(files, goal_text, eval_text, num_steps, results_col):
             <pre><code class="language-yaml">{OmegaConf.to_yaml(experiment.cfg)}</code></pre>
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
         progress_placeholder.progress(0)
 
@@ -201,7 +201,7 @@ def main():
         page_title="AIDE: the Machine Learning Engineer Agent",
         layout="wide",
         initial_sidebar_state="expanded",
-        menu_items={}
+        menu_items={},
     )
 
     # Load custom CSS from file
