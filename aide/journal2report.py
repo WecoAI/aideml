@@ -2,6 +2,7 @@ from .backend import query
 from .journal import Journal
 from .utils.config import StageConfig
 
+
 def journal2report(journal: Journal, task_desc: dict, rcfg: StageConfig):
     """
     Generate a report from a journal, the report will be in markdown format.
