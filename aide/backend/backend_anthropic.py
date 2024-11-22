@@ -21,6 +21,7 @@ def _setup_anthropic_client():
     global _client
     _client = anthropic.Anthropic(max_retries=0)
 
+
 def query(
     system_message: str | None,
     user_message: str | None,

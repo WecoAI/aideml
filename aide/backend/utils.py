@@ -11,7 +11,6 @@ FunctionCallType = dict
 OutputType = str | FunctionCallType
 
 
-
 logger = logging.getLogger("aide")
 
 
@@ -28,6 +27,7 @@ def backoff_create(
     except retry_exceptions as e:
         logger.info(f"Backoff exception: {e}")
         return False
+
 
 def opt_messages_to_list(
     system_message: str | None, user_message: str | None

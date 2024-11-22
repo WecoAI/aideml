@@ -58,6 +58,7 @@ class ExecConfig:
     agent_file_name: str
     format_tb_ipython: bool
 
+
 @dataclass
 class Config(Hashable):
     data_dir: Path
@@ -91,7 +92,10 @@ def _get_next_logindex(dir: Path) -> int:
             pass
     return max_index + 1
 
-def _load_cfg(path: Path = Path(__file__).parent / "config.yaml", use_cli_args=True) -> Config:
+
+def _load_cfg(
+    path: Path = Path(__file__).parent / "config.yaml", use_cli_args=True
+) -> Config:
     cfg = OmegaConf.load(path)
     if use_cli_args:
         cfg = OmegaConf.merge(cfg, OmegaConf.from_cli())
@@ -106,9 +110,11 @@ def load_cfg(path: Path = Path(__file__).parent / "config.yaml") -> Config:
 def prep_cfg(cfg: Config):
     if cfg.data_dir is None:
         raise ValueError("`data_dir` must be provided.")
-    
+
     if cfg.desc_file is None and cfg.goal is None:
-        raise ValueError("You must provide either a description of the task goal (`goal=...`) or a path to a plaintext file containing the description (`desc_file=...`).")
+        raise ValueError(
+            "You must provide either a description of the task goal (`goal=...`) or a path to a plaintext file containing the description (`desc_file=...`)."
+        )
 
     if cfg.data_dir.startswith("example_tasks/"):
         cfg.data_dir = Path(__file__).parent.parent / cfg.data_dir
@@ -151,19 +157,22 @@ def load_task_desc(cfg: Config):
             logger.warning(
                 "Ignoring goal and eval args because task description file is provided."
             )
-    
+
         with open(cfg.desc_file) as f:
             return f.read()
-        
+
     # or generate it from the goal and eval args
     if cfg.goal is None:
-        raise ValueError("`goal` (and optionally `eval`) must be provided if a task description file is not provided.")
+        raise ValueError(
+            "`goal` (and optionally `eval`) must be provided if a task description file is not provided."
+        )
 
     task_desc = {"Task goal": cfg.goal}
     if cfg.eval is not None:
         task_desc["Task evaluation"] = cfg.eval
 
     return task_desc
+
 
 def prep_agent_workspace(cfg: Config):
     """Setup the agent's workspace and preprocess data if necessary."""
@@ -177,7 +186,7 @@ def prep_agent_workspace(cfg: Config):
 
 def save_run(cfg: Config, journal):
     cfg.log_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # save journal
     serialize.dump_json(journal, cfg.log_dir / "journal.json")
     # save config

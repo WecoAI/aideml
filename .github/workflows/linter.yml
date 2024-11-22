@@ -6,7 +6,7 @@ on:
 
 jobs:
   lint-python:
-    name: ruff
+    name: Python Linting
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
     steps:
@@ -15,7 +15,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: 3.11
-      - name: Install Ruff
-        run: pip install ruff==0.7.1
+      - name: Install Dependencies
+        run: |
+          pip install ruff==0.7.1
+          pip install black==24.3.0
       - name: Run Ruff
         run: ruff check --output-format=github aide/
+      - name: Run Black
+        run: black --check aide/

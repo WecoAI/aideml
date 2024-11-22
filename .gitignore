@@ -165,3 +165,6 @@ logs
 
 .DS_STORE
 .trunk
+
+.gradio/
+.ruff_cache/
