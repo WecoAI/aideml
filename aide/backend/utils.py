@@ -2,15 +2,15 @@ from dataclasses import dataclass
 
 import jsonschema
 from dataclasses_json import DataClassJsonMixin
+import backoff
+import logging
+from typing import Callable
 
 PromptType = str | dict | list
 FunctionCallType = dict
 OutputType = str | FunctionCallType
 
 
-import backoff
-import logging
-from typing import Callable
 
 logger = logging.getLogger("aide")
 
