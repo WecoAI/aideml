@@ -62,7 +62,7 @@ def cfg_to_tree_struct(cfg, jou: Journal):
 
 def generate_html(tree_graph_str: str):
     template_dir = Path(__file__).parent / "viz_templates"
-    
+
     with open(template_dir / "template.js") as f:
         js = f.read()
         js = js.replace("<placeholder>", tree_graph_str)
