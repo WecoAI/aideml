@@ -24,6 +24,7 @@ logger.setLevel(logging.INFO)
 
 console = Console(file=sys.stderr)
 
+
 class WebUI:
     """
     WebUI encapsulates the Streamlit application logic for the AIDE Machine Learning Engineer Agent.
@@ -340,9 +341,7 @@ class WebUI:
         Returns:
             Experiment: The initialized Experiment object.
         """
-        experiment = Experiment(
-            data_dir=str(input_dir), goal=goal_text, eval=eval_text
-        )
+        experiment = Experiment(data_dir=str(input_dir), goal=goal_text, eval=eval_text)
         return experiment
 
     @staticmethod
@@ -368,9 +367,7 @@ class WebUI:
                 f"### 🔥 Running Step {st.session_state.current_step}/{st.session_state.total_steps}"
             )
             config_title_placeholder.markdown("### 📋 Configuration")
-            config_placeholder.code(
-                OmegaConf.to_yaml(experiment.cfg), language="yaml"
-            )
+            config_placeholder.code(OmegaConf.to_yaml(experiment.cfg), language="yaml")
             progress_placeholder.progress(0)
 
         placeholders = {
@@ -453,9 +450,7 @@ class WebUI:
         st.header("Results")
         if st.session_state.get("results"):
             results = st.session_state.results
-            tabs = st.tabs(
-                ["Tree Visualization", "Best Solution", "Config", "Journal"]
-            )
+            tabs = st.tabs(["Tree Visualization", "Best Solution", "Config", "Journal"])
 
             with tabs[0]:
                 self.render_tree_visualization(results)
@@ -533,6 +528,7 @@ class WebUI:
                 st.code(results["journal"], language="json")
         else:
             st.info("No journal available.")
+
 
 if __name__ == "__main__":
     app = WebUI()
