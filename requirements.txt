@@ -90,8 +90,4 @@ pyocr
 pyarrow
 xlrd
 backoff
-
-gradio>=4.0.0
-fastapi>=0.100.0  # If using API
-uvicorn>=0.20.0   # For serving
-
+streamlit
