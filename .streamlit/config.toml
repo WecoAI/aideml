@@ -1,0 +1,17 @@
+[theme]
+# Primary colors
+primaryColor="#0D0F18"  # --wecopink: 343 98% 63%
+backgroundColor="#F0EFE9" # --background: 49 10% 94%
+secondaryBackgroundColor="#FFFFFF" # --card: 60 33.3% 98%
+textColor="#0A0A0A" # --primary: 0 0% 17%
+
+# Font
+font="sans serif"
+
+[ui]
+hideTopBar = true
+
+[client]
+toolbarMode = "minimal"
+showErrorDetails = true
+showSidebarNavigation = false

@@ -90,3 +90,4 @@ pyocr
 pyarrow
 xlrd
 backoff
+streamlit
