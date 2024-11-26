@@ -76,6 +76,40 @@ def load_example_files():
     return example_files
 
 
+def load_example_results():
+    """Load example results from logs directory"""
+    example_results_dir = Path("logs/o1_experiments/seed2/2-o1_seed2")
+    
+    if not example_results_dir.exists():
+        return None
+        
+    try:
+        # Load solution
+        solution_path = example_results_dir / "best_solution.py"
+        solution = solution_path.read_text() if solution_path.exists() else "No solution found"
+        
+        # Load config if exists
+        config_path = example_results_dir / "config.yaml"
+        config = config_path.read_text() if config_path.exists() else ""
+        
+        # Load journal if exists
+        journal_path = example_results_dir / "journal.json"
+        journal = journal_path.read_text() if journal_path.exists() else "[]"
+        
+        # Load tree visualization
+        tree_path = example_results_dir / "tree_plot.html"
+        
+        return {
+            "solution": solution,
+            "config": config,
+            "journal": journal,
+            "tree_path": str(tree_path)
+        }
+    except Exception as e:
+        logger.error(f"Error loading example results: {e}", exc_info=True)
+        return None
+
+
 def run_aide(files, goal_text, eval_text, num_steps, results_col):
     try:
         # Create placeholders in the results column
@@ -122,10 +156,9 @@ def run_aide(files, goal_text, eval_text, num_steps, results_col):
             f"### 🔥 Running Step {st.session_state.current_step}/{num_steps}"
         )
         config_title_placeholder.markdown("### 📋 Configuration")
-        # Wrap the config in a container with fixed height and scrolling
         config_placeholder.markdown(
             f"""
-            <div style="height: 600px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px; border-radius: 5px;">
+            <div class="scrollable-code-container">
             <pre><code class="language-yaml">{OmegaConf.to_yaml(experiment.cfg)}</code></pre>
             </div>
             """,
@@ -200,8 +233,6 @@ def main():
     st.set_page_config(
         page_title="AIDE: the Machine Learning Engineer Agent",
         layout="wide",
-        initial_sidebar_state="expanded",
-        menu_items={},
     )
 
     # Load custom CSS from file
@@ -239,8 +270,7 @@ def main():
             st.session_state.anthropic_key = anthropic_key
             st.success("API keys saved!")
 
-    # Create columns for input and results (1:2 ratio)
-    input_col, results_col = st.columns([1, 2])
+    input_col, results_col = st.columns([1, 3])
 
     with input_col:
         st.header("Input")
@@ -290,48 +320,82 @@ def main():
                 )
                 st.session_state.results = results
 
-    # Results column
+    # Results section
     with results_col:
         st.header("Results")
         if st.session_state.get("results"):
             results = st.session_state.results
-            tabs = st.tabs(["Best Solution", "Config", "Journal", "Tree Visualization"])
+            tabs = st.tabs(["Tree Visualization", "Best Solution", "Config", "Journal"])
 
             with tabs[0]:
-                if "solution" in results:
-                    st.code(results["solution"], language="python")
-
-            with tabs[1]:
-                if "config" in results:
-                    st.code(results["config"], language="yaml")
-
-            with tabs[2]:
-                if "journal" in results:
-                    st.code(results["journal"], language="json")
-
-            with tabs[3]:
                 if "tree_path" in results:
                     try:
                         tree_path = Path(results["tree_path"])
+                        logger.info(f"Loading tree visualization from: {tree_path}")
+                        
                         if tree_path.exists():
                             with open(tree_path, "r", encoding="utf-8") as f:
                                 html_content = f.read()
-
+                            
+                            # Remove fixed width to make it more responsive
                             components.html(
                                 html_content,
-                                height=800,  # Increased height for better visibility
-                                width=None,  # Let it adapt to container width
-                                scrolling=True,
+                                height=800,
+                                scrolling=True
                             )
                         else:
-                            st.error(
-                                f"Tree visualization file not found at: {tree_path}"
-                            )
+                            st.error(f"Tree visualization file not found at: {tree_path}")
+                            logger.error(f"Tree file not found at: {tree_path}")
                     except Exception as e:
                         st.error(f"Error loading tree visualization: {str(e)}")
                         logger.error(f"Tree visualization error: {e}", exc_info=True)
                 else:
                     st.info("No tree visualization available for this run.")
+
+            with tabs[1]:
+                if "solution" in results:
+                    st.markdown(
+                        f"""
+                        <div class="scrollable-code-container">
+                        <pre><code class="language-python">{results["solution"]}</code></pre>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+            with tabs[2]:
+                if "config" in results:
+                    st.markdown(
+                        f"""
+                        <div class="scrollable-code-container">
+                        <pre><code class="language-yaml">{results["config"]}</code></pre>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+            with tabs[3]:
+                if "journal" in results:
+                    try:
+                        journal_data = json.loads(results["journal"])
+                        formatted_journal = json.dumps(journal_data, indent=2)
+                        st.markdown(
+                            f"""
+                            <div class="scrollable-code-container">
+                            <pre><code class="language-json">{formatted_journal}</code></pre>
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
+                    except json.JSONDecodeError:
+                        st.markdown(
+                            f"""
+                            <div class="scrollable-code-container">
+                            <pre><code class="language-json">{results["journal"]}</code></pre>
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
 
 
 if __name__ == "__main__":

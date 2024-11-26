@@ -1,47 +1,28 @@
 /* Main colors */
-:root {
+/* :root {
     --background: #F2F0E7;
     --background-shaded: #F0EADA;
     --card: #FFFFFF;
     --primary: #0D0F18;
     --accent: #FD4578;
     --border: #D4D1C7;
-}
+} */
 
 /* Main container */
-.stApp {
+/* .stApp {
     background-color: var(--background);
     height: auto;
     overflow: visible;
-}
+} */
 
 /* Widgets */
-.stSelectbox,
+/* .stSelectbox,
 .stTextInput,
 .stNumberInput {
     background-color: var(--card);
     border: 1px solid var(--border);
     border-radius: 0.4rem;
-}
-
-/* Buttons */
-.stButton>button {
-    background-color: var(--primary);
-    color: white;
-    border-radius: 0.4rem;
-    border: none;
-    padding: 0.5rem 1rem;
-    transition: opacity 0.2s;
-}
-
-.stButton>button:hover {
-    opacity: 0.9;
-}
-
-/* Cards/containers */
-.css-1d391kg {  /* Sidebar */
-    background-color: var(--card);
-}
+} */
 
 .stMarkdown {
     color: var(--primary);
@@ -77,7 +58,17 @@
 }
 
 
-.block-container {
-    padding-top: 0rem;
-    padding-bottom: 0rem;
- }
+
+.scrollable-code-container {
+    height: 600px;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    padding: 10px;
+    border-radius: 5px;
+    background-color: #f8f9fa;
+}
+
+.scrollable-code-container pre {
+    margin: 0;
+    white-space: pre-wrap;
+}

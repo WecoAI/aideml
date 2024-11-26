@@ -10,4 +10,7 @@ font="sans serif"
 
 [ui]
 hideTopBar = true
-hideSidebarNav = true
+
+[client]
+toolbarMode = "minimal"
+showErrorDetails = true
