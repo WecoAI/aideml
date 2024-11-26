@@ -168,7 +168,3 @@ logs
 
 .gradio/
 .ruff_cache/
-<<<<<<< HEAD
-=======
-
->>>>>>> b884bff (:lipstick: Add webUI for aideml)
