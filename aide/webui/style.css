@@ -1,28 +1,47 @@
 /* Main colors */
-/* :root {
+:root {
     --background: #F2F0E7;
-    --background-shaded: #F0EADA;
+    --background-shaded: #EBE8DD;
     --card: #FFFFFF;
     --primary: #0D0F18;
-    --accent: #FD4578;
+    --accent: #F04370;
     --border: #D4D1C7;
-} */
+    --accent-hover: #E13D68;
+    --accent-light: #FEE5EC;
+}
+
+.stVerticalBlock {
+    padding-top: 0rem;
+    padding-bottom: 0rem;
+}
+
+.block-container {
+    padding-top: 0rem;
+    padding-bottom: 0rem;
+}
+header.stAppHeader {
+    display: none;
+}
+section.stMain .block-container {
+    padding-top: 0rem;
+    z-index: 1;
+}
 
 /* Main container */
-/* .stApp {
+.stApp {
     background-color: var(--background);
     height: auto;
     overflow: visible;
-} */
+}
 
 /* Widgets */
-/* .stSelectbox,
+.stSelectbox,
 .stTextInput,
 .stNumberInput {
     background-color: var(--card);
     border: 1px solid var(--border);
     border-radius: 0.4rem;
-} */
+}
 
 .stMarkdown {
     color: var(--primary);
@@ -62,13 +81,76 @@
 .scrollable-code-container {
     height: 600px;
     overflow-y: auto;
-    border: 1px solid #ccc;
-    padding: 10px;
+    border: 1px solid var(--border);
+    padding: 15px;
     border-radius: 5px;
-    background-color: #f8f9fa;
+    background-color: var(--background-shaded);
 }
 
 .scrollable-code-container pre {
     margin: 0;
-    white-space: pre-wrap;
+    white-space: pre;
+    overflow-x: auto;
+    font-family: monospace;
+}
+
+.scrollable-code-container code {
+    display: block;
+    min-width: 100%;
+    padding: 0;
+    tab-size: 4;
+}
+
+/* Add custom scrollbar styling for code containers */
+.scrollable-code-container::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.scrollable-code-container::-webkit-scrollbar-track {
+    background: var(--background-shaded);
+    border-radius: 4px;
+}
+
+.scrollable-code-container::-webkit-scrollbar-thumb {
+    background: var(--accent);
+    border-radius: 4px;
+}
+
+.scrollable-code-container::-webkit-scrollbar-thumb:hover {
+    background: #e13d68;
+}
+
+/* Style for expander */
+.streamlit-expanderHeader {
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+    padding: 0.5rem !important;
+}
+
+.streamlit-expanderHeader:hover {
+    border-color: var(--accent);
+}
+
+/* Style for expander content */
+.streamlit-expanderContent {
+    background-color: var(--background-shaded);
+    border: 1px solid var(--border);
+    border-radius: 0 0 0.4rem 0.4rem;
+    margin-top: -1px;
+    padding: 0.5rem !important;
+}
+
+/* Style for st.code() blocks */
+.stCode {
+    max-height: 600px;
+    overflow-y: auto;
+    background-color: var(--background-shaded) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 5px !important;
+}
+
+.stCode pre {
+    background-color: var(--background-shaded) !important;
 }

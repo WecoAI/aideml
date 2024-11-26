@@ -14,3 +14,4 @@ hideTopBar = true
 [client]
 toolbarMode = "minimal"
 showErrorDetails = true
+showSidebarNavigation = false

@@ -76,28 +76,32 @@ def load_example_files():
     return example_files
 
 
-def load_example_results():
-    """Load example results from logs directory"""
-    example_results_dir = Path("logs/o1_experiments/seed2/2-o1_seed2")
-    
-    if not example_results_dir.exists():
+def load_example_results(results_dir=None):
+    """Load example results from specified logs directory"""
+    if not results_dir:
+        return None
+        
+    # If a file was selected, use its parent directory
+    results_path = Path(results_dir).parent if Path(results_dir).is_file() else Path(results_dir)
+    if not results_path.exists():
+        st.error(f"Results directory not found at: {results_path}")
         return None
         
     try:
         # Load solution
-        solution_path = example_results_dir / "best_solution.py"
+        solution_path = results_path / "best_solution.py"
         solution = solution_path.read_text() if solution_path.exists() else "No solution found"
         
         # Load config if exists
-        config_path = example_results_dir / "config.yaml"
+        config_path = results_path / "config.yaml"
         config = config_path.read_text() if config_path.exists() else ""
         
         # Load journal if exists
-        journal_path = example_results_dir / "journal.json"
+        journal_path = results_path / "journal.json"
         journal = journal_path.read_text() if journal_path.exists() else "[]"
         
         # Load tree visualization
-        tree_path = example_results_dir / "tree_plot.html"
+        tree_path = results_path / "tree_plot.html"
         
         return {
             "solution": solution,
@@ -156,13 +160,9 @@ def run_aide(files, goal_text, eval_text, num_steps, results_col):
             f"### 🔥 Running Step {st.session_state.current_step}/{num_steps}"
         )
         config_title_placeholder.markdown("### 📋 Configuration")
-        config_placeholder.markdown(
-            f"""
-            <div class="scrollable-code-container">
-            <pre><code class="language-yaml">{OmegaConf.to_yaml(experiment.cfg)}</code></pre>
-            </div>
-            """,
-            unsafe_allow_html=True,
+        config_placeholder.code(
+            OmegaConf.to_yaml(experiment.cfg),
+            language="yaml"
         )
         progress_placeholder.progress(0)
 
@@ -275,16 +275,35 @@ def main():
     with input_col:
         st.header("Input")
 
+        # with st.expander("Load Existing Results", expanded=False):
+        #     st.info("Enter the path to your experiment results directory")
+        #     results_dir = st.text_input(
+        #         "Results Directory",
+        #         placeholder="e.g., logs/experiment_1",
+        #         help="Path to the directory containing experiment results"
+        #     )
+        #     if st.button("Load Results", use_container_width=True):
+        #         if results_dir:
+        #             results = load_example_results(results_dir)
+        #             if results:
+        #                 st.session_state.results = results
+        #                 st.success("Results loaded successfully!")
+        #         else:
+        #             st.warning("Please enter a results directory path")
+
         # Load example button
-        if st.button("Load Example Experiment", use_container_width=True):
+        if st.button("Load Example Experiment", type="primary", use_container_width=True):
             st.session_state.example_files = load_example_files()
 
         # File uploader and other inputs
         if st.session_state.get("example_files"):
             st.info("Example files loaded! Click 'Run AIDE' to proceed.")
-            st.write("Loaded files:")
-            for file in st.session_state.example_files:
-                st.write(f"- {file['name']}")
+            
+            # Add compact dropdown for loaded files
+            with st.expander("View Loaded Files", expanded=False):
+                for file in st.session_state.example_files:
+                    st.text(f"📄 {file['name']}")
+            
             uploaded_files = st.session_state.example_files
         else:
             uploaded_files = st.file_uploader(
@@ -340,7 +359,7 @@ def main():
                             # Remove fixed width to make it more responsive
                             components.html(
                                 html_content,
-                                height=800,
+                                height=600,
                                 scrolling=True
                             )
                         else:
@@ -354,48 +373,22 @@ def main():
 
             with tabs[1]:
                 if "solution" in results:
-                    st.markdown(
-                        f"""
-                        <div class="scrollable-code-container">
-                        <pre><code class="language-python">{results["solution"]}</code></pre>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
+                    # Clean and format the solution code
+                    solution_code = results["solution"]
+                    st.code(solution_code, language="python")
 
             with tabs[2]:
                 if "config" in results:
-                    st.markdown(
-                        f"""
-                        <div class="scrollable-code-container">
-                        <pre><code class="language-yaml">{results["config"]}</code></pre>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
+                    st.code(results["config"], language="yaml")
 
             with tabs[3]:
                 if "journal" in results:
                     try:
                         journal_data = json.loads(results["journal"])
                         formatted_journal = json.dumps(journal_data, indent=2)
-                        st.markdown(
-                            f"""
-                            <div class="scrollable-code-container">
-                            <pre><code class="language-json">{formatted_journal}</code></pre>
-                            </div>
-                            """,
-                            unsafe_allow_html=True,
-                        )
+                        st.code(formatted_journal, language="json")
                     except json.JSONDecodeError:
-                        st.markdown(
-                            f"""
-                            <div class="scrollable-code-container">
-                            <pre><code class="language-json">{results["journal"]}</code></pre>
-                            </div>
-                            """,
-                            unsafe_allow_html=True,
-                        )
+                        st.code(results["journal"], language="json")
 
 
 if __name__ == "__main__":
