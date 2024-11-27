@@ -462,20 +462,13 @@ class WebUI:
         if st.session_state.get("results"):
             results = st.session_state.results
 
-            # Display best score prominently
-            best_metric = self.get_best_metric(results)
-            if best_metric is not None:
-                st.metric("Best Validation Score", f"{best_metric:.4f}")
-
-            tabs = st.tabs(
-                [
-                    "Tree Visualization",
-                    "Best Solution",
-                    "Config",
-                    "Journal",
-                    "Validation Plot",
-                ]
-            )
+            tabs = st.tabs([
+                "Tree Visualization",
+                "Best Solution",
+                "Config",
+                "Journal",
+                "Validation Plot",
+            ])
 
             with tabs[0]:
                 self.render_tree_visualization(results)
@@ -486,6 +479,10 @@ class WebUI:
             with tabs[3]:
                 self.render_journal(results)
             with tabs[4]:
+                # Display best score before the plot
+                best_metric = self.get_best_metric(results)
+                if best_metric is not None:
+                    st.metric("Best Validation Score", f"{best_metric:.4f}")
                 self.render_validation_plot(results)
         else:
             st.info("No results to display. Please run an experiment.")
@@ -587,9 +584,13 @@ class WebUI:
             metrics = []
 
             for node in journal_data:
-                if node["metric"] is not None:
-                    steps.append(node["step"])
-                    metrics.append(float(node["metric"]))
+                if node["metric"] is not None and node["metric"].lower() != "none":
+                    try:
+                        metric_value = float(node["metric"])
+                        steps.append(node["step"])
+                        metrics.append(metric_value)
+                    except (ValueError, TypeError):
+                        continue
 
             if metrics:
                 import plotly.graph_objects as go
