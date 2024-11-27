@@ -198,12 +198,12 @@ class WebUI:
         goal_text = st.text_area(
             "Goal",
             value=st.session_state.get("goal", ""),
-            placeholder="Example: Predict house prices",
+            placeholder="Example: Predict the sales price for each house",
         )
         eval_text = st.text_area(
             "Evaluation Criteria",
             value=st.session_state.get("eval", ""),
-            placeholder="Example: Use RMSE metric",
+            placeholder="Example: Use the RMSE metric between the logarithm of the predicted and observed values.",
         )
         num_steps = st.slider(
             "Number of Steps",
@@ -462,13 +462,15 @@ class WebUI:
         if st.session_state.get("results"):
             results = st.session_state.results
 
-            tabs = st.tabs([
-                "Tree Visualization",
-                "Best Solution",
-                "Config",
-                "Journal",
-                "Validation Plot",
-            ])
+            tabs = st.tabs(
+                [
+                    "Tree Visualization",
+                    "Best Solution",
+                    "Config",
+                    "Journal",
+                    "Validation Plot",
+                ]
+            )
 
             with tabs[0]:
                 self.render_tree_visualization(results)
