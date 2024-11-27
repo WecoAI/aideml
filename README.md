@@ -21,7 +21,62 @@ More specifically, AIDE has the following features:
 
 # How to Use AIDE?
 
-## Setup
+## Running AIDE via the Web UI
+
+
+https://github.com/user-attachments/assets/1da42853-fe36-45e1-b6a2-852f88470af6
+
+
+We have developed a user-friendly Web UI using Streamlit to make it even easier to interact with AIDE.
+
+### Prerequisites
+
+Ensure you have installed the development version of AIDE and its dependencies as described in the [Development](#development) section.
+
+### Running the Web UI
+
+Navigate to the `aide/webui` directory and run the Streamlit application:
+
+```bash
+cd aide/webui
+streamlit run app.py
+```
+
+Alternatively, you can run it from the root directory:
+
+```bash
+streamlit run aide/webui/app.py
+```
+
+### Using the Web UI
+
+1. **API Key Configuration**: In the sidebar, input your OpenAI API key or Anthropic API key and click "Save API Keys".
+
+2. **Input Data**:
+   - You can either **upload your dataset files** (`.csv`, `.txt`, `.json`, `.md`) using the "Upload Data Files" feature.
+   - Or click on "Load Example Experiment" to use the example house prices dataset.
+
+3. **Define Goal and Evaluation Criteria**:
+   - In the "Goal" text area, describe what you want the model to achieve (e.g., "Predict the sales price for each house").
+   - In the "Evaluation Criteria" text area, specify the evaluation metric (e.g., "Use the RMSE metric between the logarithm of the predicted and observed values.").
+
+4. **Configure Steps**:
+   - Use the slider to set the number of steps (iterations) for the experiment.
+
+5. **Run the Experiment**:
+   - Click on "Run AIDE" to start the experiment.
+   - Progress and status updates will be displayed in the "Results" section.
+
+6. **View Results**:
+   - **Tree Visualization**: Explore the solution tree to understand how AIDE experimented and optimized the models.
+   - **Best Solution**: View the Python code of the best solution found.
+   - **Config**: Review the configuration used for the experiment.
+   - **Journal**: Examine the detailed journal entries for each step.
+
+
+## Running AIDE via the Command Line
+
+### Setup
 
 Make sure you have `Python>=3.10` installed and run:
 
@@ -38,8 +93,6 @@ export OPENAI_API_KEY=<your API key>
 # or
 export ANTHROPIC_API_KEY=<your API key>
 ```
-
-## Running AIDE via the Command Line
 
 To run AIDE:
 
@@ -107,54 +160,6 @@ AIDE supports using local LLMs through OpenAI-compatible APIs. Here's how to set
        goal="Predict the sales price for each house" \
        eval="Use the RMSE metric between the logarithm of the predicted and observed values."
    ```
-
-## Running AIDE via the Web UI
-
-We have developed a user-friendly Web UI using Streamlit to make it even easier to interact with AIDE.
-
-### Prerequisites
-
-Ensure you have installed the development version of AIDE and its dependencies as described in the [Development](#development) section.
-
-### Running the Web UI
-
-Navigate to the `aide/webui` directory and run the Streamlit application:
-
-```bash
-cd aide/webui
-streamlit run app.py
-```
-
-Alternatively, you can run it from the root directory:
-
-```bash
-streamlit run aide/webui/app.py
-```
-
-### Using the Web UI
-
-1. **API Key Configuration**: In the sidebar, input your OpenAI API key or Anthropic API key and click "Save API Keys".
-
-2. **Input Data**:
-   - You can either **upload your dataset files** (`.csv`, `.txt`, `.json`, `.md`) using the "Upload Data Files" feature.
-   - Or click on "Load Example Experiment" to use the example house prices dataset.
-
-3. **Define Goal and Evaluation Criteria**:
-   - In the "Goal" text area, describe what you want the model to achieve (e.g., "Predict the sales price for each house").
-   - In the "Evaluation Criteria" text area, specify the evaluation metric (e.g., "Use the RMSE metric between the logarithm of the predicted and observed values.").
-
-4. **Configure Steps**:
-   - Use the slider to set the number of steps (iterations) for the experiment.
-
-5. **Run the Experiment**:
-   - Click on "Run AIDE" to start the experiment.
-   - Progress and status updates will be displayed in the "Results" section.
-
-6. **View Results**:
-   - **Tree Visualization**: Explore the solution tree to understand how AIDE experimented and optimized the models.
-   - **Best Solution**: View the Python code of the best solution found.
-   - **Config**: Review the configuration used for the experiment.
-   - **Journal**: Examine the detailed journal entries for each step.
 
 ## Using AIDE in Python
 
