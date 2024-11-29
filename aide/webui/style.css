@@ -167,3 +167,7 @@ section.stMain .block-container {
 .stCode pre {
     background-color: var(--background-shaded) !important;
 }
+
+div[data-testid="InputInstructions"] {
+    visibility: hidden;
+}
