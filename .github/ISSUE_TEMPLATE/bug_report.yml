@@ -42,6 +42,13 @@ body:
       description: What version of AIDE are you using?
       placeholder: ex. 0.1.4, main, etc.
 
+  - type: input
+    id: llm
+    attributes:
+      label: LLM
+      description: Which llm are you using?
+      placeholder: ex. gpt-4-turbo, claude-3-5-sonnet, etc.
+
   - type: dropdown
     id: os
     attributes:
