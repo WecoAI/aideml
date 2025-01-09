@@ -1,6 +1,5 @@
 """Backend for Anthropic API."""
 
-import json
 import logging
 import time
 
