@@ -36,6 +36,7 @@ SUPPORTED_FUNCTION_CALL_MODELS = {
     "gpt-3.5-turbo-1106",
 }
 
+
 @once
 def _setup_openai_client():
     global _client
@@ -93,7 +94,7 @@ def query(
         output = choice.message.content
     else:
         tool_calls = getattr(choice.message, "tool_calls", None)
-        
+
         if not tool_calls:
             logger.warning(
                 f"No function call used despite function spec. Fallback to text. "
