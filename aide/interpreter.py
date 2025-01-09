@@ -74,11 +74,15 @@ def exception_summary(e, working_dir, exec_file_name, format_tb_ipython):
 
 
 class RedirectQueue:
-    def __init__(self, queue):
+    def __init__(self, queue, timeout=5):
         self.queue = queue
+        self.timeout = timeout
 
     def write(self, msg):
-        self.queue.put(msg)
+        try:
+            self.queue.put(msg, timeout=self.timeout)
+        except queue.Full:
+            logger.warning("Queue write timed out")
 
     def flush(self):
         pass
@@ -178,17 +182,25 @@ class Interpreter:
     def cleanup_session(self):
         if self.process is None:
             return
-        # give the child process a chance to terminate gracefully
-        self.process.terminate()
-        self.process.join(timeout=2)
-        # kill the child process if it's still alive
-        if self.process.exitcode is None:
-            logger.warning("Child process failed to terminate gracefully, killing it..")
-            self.process.kill()
-            self.process.join()
-        # don't wait for gc, clean up immediately
-        self.process.close()
-        self.process = None  # type: ignore
+        try:
+            # Reduce grace period from 2 seconds to 0.5
+            self.process.terminate()
+            self.process.join(timeout=0.5)
+
+            if self.process.exitcode is None:
+                logger.warning("Process failed to terminate, killing immediately")
+                self.process.kill()
+                self.process.join(timeout=0.5)
+
+                if self.process.exitcode is None:
+                    logger.error("Process refuses to die, using SIGKILL")
+                    os.kill(self.process.pid, signal.SIGKILL)
+        except Exception as e:
+            logger.error(f"Error during process cleanup: {e}")
+        finally:
+            if self.process is not None:
+                self.process.close()
+                self.process = None
 
     def run(self, code: str, reset_session=True) -> ExecutionResult:
         """
@@ -257,15 +269,12 @@ class Interpreter:
                     continue
                 running_time = time.time() - start_time
                 if running_time > self.timeout:
-
-                    # [TODO] handle this in a better way
-                    assert reset_session, "Timeout ocurred in interactive session"
-
-                    # send interrupt to child
-                    os.kill(self.process.pid, signal.SIGINT)  # type: ignore
+                    logger.warning(f"Execution exceeded timeout of {self.timeout}s")
+                    os.kill(self.process.pid, signal.SIGINT)
                     child_in_overtime = True
-                    # terminate if we're overtime by more than a minute
-                    if running_time > self.timeout + 60:
+
+                    # terminate if we're overtime by more than 5 seconds
+                    if running_time > self.timeout + 5:
                         logger.warning("Child failed to terminate, killing it..")
                         self.cleanup_session()
 
@@ -277,8 +286,16 @@ class Interpreter:
         # read all stdout/stderr from child up to the EOF marker
         # waiting until the queue is empty is not enough since
         # the feeder thread in child might still be adding to the queue
+        start_collect = time.time()
         while not self.result_outq.empty() or not output or output[-1] != "<|EOF|>":
-            output.append(self.result_outq.get())
+            try:
+                # Add 5-second timeout for output collection
+                if time.time() - start_collect > 5:
+                    logger.warning("Output collection timed out")
+                    break
+                output.append(self.result_outq.get(timeout=1))
+            except queue.Empty:
+                continue
         output.pop()  # remove the EOF marker
 
         e_cls_name, exc_info, exc_stack = state[1:]
