@@ -35,7 +35,7 @@ def query(
 
     # Handle models with beta limitations
     # ref: https://platform.openai.com/docs/guides/reasoning/beta-limitations
-    if model.startswith("o1-"):
+    if model.startswith("o1"):
         if system_message:
             user_message = system_message
         system_message = None
