@@ -38,6 +38,19 @@ def normalize_layout(layout: np.ndarray):
     return layout
 
 
+def strip_code_markers(code: str) -> str:
+    """Remove markdown code block markers if present."""
+    code = code.strip()
+    if code.startswith("```"):
+        # Remove opening backticks and optional language identifier
+        first_newline = code.find("\n")
+        if first_newline != -1:
+            code = code[first_newline:].strip()
+    if code.endswith("```"):
+        code = code[:-3].strip()
+    return code
+
+
 def cfg_to_tree_struct(cfg, jou: Journal):
     edges = list(get_edges(jou))
     layout = normalize_layout(generate_layout(len(jou), edges))
@@ -52,7 +65,7 @@ def cfg_to_tree_struct(cfg, jou: Journal):
         edges=edges,
         layout=layout.tolist(),
         plan=[textwrap.fill(n.plan, width=80) for n in jou.nodes],
-        code=[n.code for n in jou],
+        code=[strip_code_markers(n.code) for n in jou],
         term_out=[n.term_out for n in jou],
         analysis=[n.analysis for n in jou],
         exp_name=cfg.exp_name,
