@@ -9,7 +9,7 @@ anthropic>=0.20.0
 pandas==2.1.4
 pytest==7.4.3
 requests==2.31.0
-scikit-learn==1.2.2
+scikit-learn==1.5.0
 rich==13.7.0
 scipy==1.11.4
 dataclasses_json>=0.6.4
