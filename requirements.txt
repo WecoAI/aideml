@@ -16,7 +16,7 @@ dataclasses_json>=0.6.4
 omegaconf>=2.3.0
 loguru==0.7.2
 shutup>=0.2.0
-tqdm==4.66.2
+tqdm==4.66.3
 coolname>=2.2.0
 igraph>=0.11.3
 genson>=1.2.0
