@@ -58,7 +58,7 @@ def query(
             messages=messages,
             **filtered_kwargs,
         )
-    except openai.error.InvalidRequestError as e:
+    except openai.error.BadRequestError as e:
         # Check whether the error indicates that function calling is not supported
         if "function calling" in str(e).lower() or "tools" in str(e).lower():
             logger.warning(
