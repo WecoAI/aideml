@@ -6,11 +6,13 @@
 [![Discord](https://dcbadge.vercel.app/api/server/Rq7t8wnsuA?compact=true&style=flat)](https://discord.gg/Rq7t8wnsuA)&ensp;
 [![Twitter Follow](https://img.shields.io/twitter/follow/WecoAI?style=social)](https://twitter.com/WecoAI)&ensp;
 
-AIDE is an LLM agent that generates solutions for machine learning tasks just from natural language descriptions of the task.
+AIDE is an LLM agent that generates solutions for machine learning tasks just from natural language descriptions of the task. This repository implements the AIDE agent described in our paper - [AIDE: AI-Driven Exploration in the Space of Code](https://arxiv.org/pdf/2502.13138). We recommend to check out the [project page](https://www.aide.ml) and [technical report](https://www.weco.ai/blog/technical-report) for a quick summary of the method and results.
 
 AIDE is the state-of-the-art agent on OpenAI's [MLE-bench](https://arxiv.org/pdf/2410.07095), a benchmark composed of 75 Kaggle machine learning tasks, where we achieved four times more medals compared to the runner-up agent architecture.
 
-In our own benchmark composed of over 60 Kaggle data science competitions, AIDE demonstrated impressive performance, surpassing 50% of Kaggle participants on average (see our [technical report](https://www.weco.ai/blog/technical-report) for details).
+METR's [RE-Bench](https://arxiv.org/pdf/2411.15114) shows that AIDE is not only capable at machine learning tasks but generalizes to the AI R&D tasks such as optimizing low level Triton kernels and finetuning GPT-2 for QA, even surpassing the performance of human experts.
+
+In our own benchmark composed of over 60 Kaggle data science competitions, AIDE demonstrated impressive performance, surpassing 50% of Kaggle participants on average.
 
 More specifically, AIDE has the following features:
 
@@ -246,3 +248,18 @@ At its core, Solution Space Tree Search consists of three main components:
 By repeatedly applying these steps, AIDE navigates the vast space of possible solutions, progressively refining its approach until it converges on the optimal solution for the given data science problem.
 
 ![Tree Search Visualization](https://github.com/WecoAI/aideml/assets/8918572/2401529c-b97e-4029-aed2-c3f376f54c3c)
+
+# Citation
+
+If you use AIDE in your work, please cite the following paper:
+```bibtex
+@misc{aide2025,
+      title={AIDE: AI-Driven Exploration in the Space of Code}, 
+      author={Zhengyao Jiang and Dominik Schmidt and Dhruv Srikanth and Dixing Xu and Ian Kaplan and Deniss Jacenko and Yuxiang Wu},
+      year={2025},
+      eprint={2502.13138},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2502.13138}, 
+}
+```
