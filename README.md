@@ -1,18 +1,24 @@
-# AIDE: the Machine Learning Engineer Agent
+<h1 align="center">AIDE: The Machine Learning Engineer Agent</h1>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)&ensp;
-[![PyPI](https://img.shields.io/pypi/v/aideml?color=blue)](https://pypi.org/project/aideml/)&ensp;
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/release/python-3100/)
-[![Discord](https://dcbadge.vercel.app/api/server/Rq7t8wnsuA?compact=true&style=flat)](https://discord.gg/Rq7t8wnsuA)&ensp;
-[![Twitter Follow](https://img.shields.io/twitter/follow/WecoAI?style=social)](https://twitter.com/WecoAI)&ensp;
+<p align="center">
+          📑 <a href="https://arxiv.org/abs/2502.13138">Paper</a>&nbsp&nbsp | &nbsp&nbsp📝 <a href="https://www.weco.ai/blog/technical-report">Blog</a>&nbsp&nbsp | &nbsp&nbsp🌐 <a href="https://www.aide.ml">Project</a>
+</p>
 
-AIDE is an LLM agent that generates solutions for machine learning tasks just from natural language descriptions of the task. This repository implements the AIDE agent described in our paper - [AIDE: AI-Driven Exploration in the Space of Code](https://arxiv.org/pdf/2502.13138). We recommend to check out the [project page](https://www.aide.ml) and [technical report](https://www.weco.ai/blog/technical-report) for a quick summary of the method and results.
+<p align="center">
+  <a href="https://www.python.org/downloads/release/python-3100/"><img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+"></a>
+  <a href="https://pypi.org/project/aideml/"><img src="https://img.shields.io/pypi/v/aideml?color=blue" alt="PyPI"></a>&ensp;
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>&ensp;
+  <a href="https://discord.gg/Rq7t8wnsuA"><img src="https://dcbadge.vercel.app/api/server/Rq7t8wnsuA?compact=true&style=flat" alt="Discord"></a>&ensp;
+  <a href="https://twitter.com/WecoAI"><img src="https://img.shields.io/twitter/follow/WecoAI?style=social" alt="Twitter Follow"></a>&ensp;
+</p>
 
-AIDE is the state-of-the-art agent on OpenAI's [MLE-bench](https://arxiv.org/pdf/2410.07095), a benchmark composed of 75 Kaggle machine learning tasks, where we achieved four times more medals compared to the runner-up agent architecture.
-
-METR's [RE-Bench](https://arxiv.org/pdf/2411.15114) shows that AIDE is not only capable at machine learning tasks but generalizes to the AI R&D tasks such as optimizing low level Triton kernels and finetuning GPT-2 for QA, even surpassing the performance of human experts.
+AIDE is an LLM agent that generates solutions for machine learning tasks just from natural language descriptions of the task.
 
 In our own benchmark composed of over 60 Kaggle data science competitions, AIDE demonstrated impressive performance, surpassing 50% of Kaggle participants on average.
+
+OpenAI's [MLE-bench](https://arxiv.org/pdf/2410.07095), a benchmark composed of 75 Kaggle machine learning tasks, shows that AIDE achieved four times more medals compared to the runner-up agent architecture.
+
+METR's [RE-Bench](https://arxiv.org/pdf/2411.15114) shows that AIDE is not only capable at machine learning tasks but generalizes to the AI R&D tasks such as optimizing low level Triton kernels and finetuning GPT-2 for QA, even surpassing the performance of human experts.
 
 More specifically, AIDE has the following features:
 
@@ -253,7 +259,7 @@ By repeatedly applying these steps, AIDE navigates the vast space of possible so
 
 If you use AIDE in your work, please cite the following paper:
 ```bibtex
-@misc{aide2025,
+@article{aide2025,
       title={AIDE: AI-Driven Exploration in the Space of Code}, 
       author={Zhengyao Jiang and Dominik Schmidt and Dhruv Srikanth and Dixing Xu and Ian Kaplan and Deniss Jacenko and Yuxiang Wu},
       year={2025},
