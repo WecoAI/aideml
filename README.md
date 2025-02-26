@@ -8,7 +8,6 @@
   <a href="https://www.python.org/downloads/release/python-3100/"><img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+"></a>
   <a href="https://pypi.org/project/aideml/"><img src="https://img.shields.io/pypi/v/aideml?color=blue" alt="PyPI"></a>&ensp;
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>&ensp;
-  <a href="https://discord.gg/Rq7t8wnsuA"><img src="https://dcbadge.vercel.app/api/server/Rq7t8wnsuA?compact=true&style=flat" alt="Discord"></a>&ensp;
   <a href="https://twitter.com/WecoAI"><img src="https://img.shields.io/twitter/follow/WecoAI?style=social" alt="Twitter Follow"></a>&ensp;
 </p>
 
