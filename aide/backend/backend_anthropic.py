@@ -19,7 +19,8 @@ ANTHROPIC_TIMEOUT_EXCEPTIONS = (
 )
 
 ANTHROPIC_MODEL_ALIASES = {
-    "claude-3.5-sonnet": "claude-3-sonnet-20241022",
+    "claude-3.5-sonnet": "claude-3-5-sonnet-20241022",
+    "claude-3.7-sonnet": "claude-3-7-sonnet-20250219",
 }
 
 
@@ -49,6 +50,8 @@ def query(
 
     if model_name in ANTHROPIC_MODEL_ALIASES:
         model_name = ANTHROPIC_MODEL_ALIASES[model_name]
+        filtered_kwargs["model"] = model_name
+        logger.debug(f"Using aliased model name: {model_name}")
 
     if func_spec is not None and func_spec.name == "submit_review":
         filtered_kwargs["tools"] = [func_spec.as_anthropic_tool_dict]
