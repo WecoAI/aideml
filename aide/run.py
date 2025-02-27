@@ -125,7 +125,7 @@ def run():
     with Live(
         generate_live(),
         refresh_per_second=16,
-        screen=True,
+        screen=False,
     ) as live:
         while global_step < cfg.agent.steps:
             agent.step(exec_callback=exec_callback)
