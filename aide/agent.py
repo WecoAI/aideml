@@ -153,23 +153,29 @@ class Agent:
     def plan_and_code_query(self, prompt, retries=3) -> tuple[str, str]:
         """Generate a natural language plan + code in the same LLM call and split them apart."""
         completion_text = None
-        for _ in range(retries):
+        for attempt in range(retries):
+            logger.info(
+                f"Querying LLM for plan and code (attempt {attempt+1}/{retries})"
+            )
             completion_text = query(
                 system_message=prompt,
                 user_message=None,
                 model=self.acfg.code.model,
                 temperature=self.acfg.code.temp,
+                max_tokens=self.acfg.code.max_tokens,
             )
 
+            logger.info("Extracting code and natural language from LLM response")
             code = extract_code(completion_text)
             nl_text = extract_text_up_to_code(completion_text)
 
             if code and nl_text:
                 # merge all code blocks into a single string
+                logger.info("Successfully extracted plan and code")
                 return nl_text, code
 
-            print("Plan + code extraction failed, retrying...")
-        print("Final plan + code extraction attempt failed, giving up...")
+            logger.warning("Plan + code extraction failed, retrying...")
+        logger.error("Final plan + code extraction attempt failed, giving up...")
         return "", completion_text  # type: ignore
 
     def _draft(self) -> Node:
@@ -274,30 +280,43 @@ class Agent:
         self.data_preview = data_preview.generate(self.cfg.workspace_dir)
 
     def step(self, exec_callback: ExecCallbackType):
+        logger.info("Starting a new agent step")
         if not self.journal.nodes or self.data_preview is None:
+            logger.info("Updating data preview")
             self.update_data_preview()
 
         parent_node = self.search_policy()
-        logger.debug(f"Agent is generating code, parent node type: {type(parent_node)}")
+        logger.info(
+            f"Search policy selected parent node: {parent_node.id if parent_node else 'None'}"
+        )
 
         if parent_node is None:
+            logger.info("Drafting a new solution")
             result_node = self._draft()
         elif parent_node.is_buggy:
+            logger.info(f"Debugging buggy node {parent_node.id}")
             result_node = self._debug(parent_node)
         else:
+            logger.info(f"Improving node {parent_node.id}")
             result_node = self._improve(parent_node)
 
+        logger.info("Executing the generated code")
+        exec_result = exec_callback(result_node.code, True)
+        logger.info("Parsing execution results")
         self.parse_exec_result(
             node=result_node,
-            exec_result=exec_callback(result_node.code, True),
+            exec_result=exec_result,
         )
         self.journal.append(result_node)
+        logger.info(f"Step completed. Node {result_node.id} added to journal")
 
     def parse_exec_result(self, node: Node, exec_result: ExecutionResult):
-        logger.info(f"Agent is parsing execution results for node {node.id}")
+        logger.info(f"Parsing execution results for node {node.id}")
 
         node.absorb_exec_result(exec_result)
+        logger.info("Execution result absorbed.")
 
+        logger.info("Preparing prompt for code review")
         prompt = {
             "Introduction": (
                 "You are a Kaggle grandmaster attending a competition. "
@@ -309,6 +328,7 @@ class Agent:
             "Execution output": wrap_code(node.term_out, lang=""),
         }
 
+        logger.info("Querying LLM for code review")
         response = cast(
             dict,
             query(
@@ -317,12 +337,17 @@ class Agent:
                 func_spec=review_func_spec,
                 model=self.acfg.feedback.model,
                 temperature=self.acfg.feedback.temp,
+                max_tokens=self.acfg.feedback.max_tokens,
             ),
+        )
+        logger.info(
+            f"Received review response: is_bug={response['is_bug']}, metric={response['metric']}"
         )
 
         # if the metric isn't a float then fill the metric with the worst metric
         if not isinstance(response["metric"], float):
             response["metric"] = None
+            logger.warning("Metric is not a float, setting to None")
 
         node.analysis = response["summary"]
         node.is_buggy = (
@@ -330,10 +355,15 @@ class Agent:
             or node.exc_type is not None
             or response["metric"] is None
         )
+        logger.info(f"Node {node.id} is {'buggy' if node.is_buggy else 'not buggy'}")
 
         if node.is_buggy:
             node.metric = WorstMetricValue()
+            logger.info("Setting worst metric value for buggy node")
         else:
             node.metric = MetricValue(
                 response["metric"], maximize=not response["lower_is_better"]
+            )
+            logger.info(
+                f"Setting metric value: {response['metric']} ({'maximize' if not response['lower_is_better'] else 'minimize'})"
             )

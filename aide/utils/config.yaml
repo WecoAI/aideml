@@ -29,6 +29,7 @@ generate_report: True
 report:
   model: gpt-4-turbo
   temp: 1.0
+  max_tokens: 4096
 
 # agent hyperparams
 agent:
@@ -43,13 +44,15 @@ agent:
 
   # LLM settings for coding
   code:
-    model: gpt-4-turbo
+    model: claude-3.7-sonnet-thinking
     temp: 0.5
+    max_tokens: 8192
 
   # LLM settings for evaluating program output / tracebacks
   feedback:
-    model: gpt-4-turbo
+    model: claude-3.5-sonnet
     temp: 0.5
+    max_tokens: 4096
 
   # hyperparameters for the tree search
   search:
