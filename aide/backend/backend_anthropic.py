@@ -18,9 +18,15 @@ ANTHROPIC_TIMEOUT_EXCEPTIONS = (
     anthropic.InternalServerError,
 )
 
+# Define thinking-enabled model aliases
+# Format: "alias": ("actual_model_name", thinking_budget)
 ANTHROPIC_MODEL_ALIASES = {
     "claude-3.5-sonnet": "claude-3-5-sonnet-20241022",
     "claude-3.7-sonnet": "claude-3-7-sonnet-20250219",
+    "claude-3.7-sonnet-thinking": (
+        "claude-3-7-sonnet-20250219",
+        16000,
+    ),  # With 16K thinking budget
 }
 
 
@@ -38,20 +44,50 @@ def query(
 ) -> tuple[OutputType, float, int, int, dict]:
     """
     Query Anthropic's API, optionally with tool use (Anthropic's equivalent to function calling).
+
+    Extended thinking is automatically enabled when using model aliases with "-thinking" suffix.
     """
     _setup_anthropic_client()
 
     filtered_kwargs: dict = select_values(notnone, model_kwargs)  # type: ignore
     if "max_tokens" not in filtered_kwargs:
-        filtered_kwargs["max_tokens"] = 4096  # default for Claude models
+        filtered_kwargs["max_tokens"] = 8192  # default for Claude models
 
     model_name = filtered_kwargs.get("model", "")
     logger.debug(f"Anthropic query called with model='{model_name}'")
 
+    # Check if this is a thinking-enabled model alias
+    thinking_enabled = False
+    thinking_budget = None
+
     if model_name in ANTHROPIC_MODEL_ALIASES:
-        model_name = ANTHROPIC_MODEL_ALIASES[model_name]
+        alias_value = ANTHROPIC_MODEL_ALIASES[model_name]
+
+        # Check if this is a tuple with thinking budget
+        if isinstance(alias_value, tuple):
+            model_name = alias_value[0]
+            thinking_budget = alias_value[1]
+            thinking_enabled = True
+            logger.debug(
+                f"Using thinking-enabled model: {model_name} with budget: {thinking_budget}"
+            )
+        else:
+            model_name = alias_value
+
         filtered_kwargs["model"] = model_name
         logger.debug(f"Using aliased model name: {model_name}")
+
+    # Configure extended thinking if enabled via alias
+    if thinking_enabled and thinking_budget is not None:
+        if thinking_budget >= filtered_kwargs["max_tokens"]:
+            logger.warning("thinking_budget must be less than max_tokens, adjusting")
+            thinking_budget = filtered_kwargs["max_tokens"] - 1
+
+        filtered_kwargs["thinking"] = {
+            "type": "enabled",
+            "budget_tokens": thinking_budget,
+        }
+        filtered_kwargs["temperature"] = 1  # temp must be 1 when thinking enabled
 
     if func_spec is not None and func_spec.name == "submit_review":
         filtered_kwargs["tools"] = [func_spec.as_anthropic_tool_dict]

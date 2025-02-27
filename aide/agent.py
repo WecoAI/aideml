@@ -159,6 +159,7 @@ class Agent:
                 user_message=None,
                 model=self.acfg.code.model,
                 temperature=self.acfg.code.temp,
+                max_tokens=self.acfg.code.max_tokens,
             )
 
             code = extract_code(completion_text)
@@ -317,6 +318,7 @@ class Agent:
                 func_spec=review_func_spec,
                 model=self.acfg.feedback.model,
                 temperature=self.acfg.feedback.temp,
+                max_tokens=self.acfg.feedback.max_tokens,
             ),
         )
 

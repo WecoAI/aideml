@@ -30,6 +30,7 @@ logger.setLevel(logging.WARNING)
 class StageConfig:
     model: str
     temp: float
+    max_tokens: int
 
 
 @dataclass
