@@ -40,16 +40,12 @@ def query(
     system_message: str | None,
     user_message: str | None,
     func_spec: FunctionSpec | None = None,
-    thinking_callback=None,  # Optional callback function for streamed thinking content
     **model_kwargs,
 ) -> tuple[OutputType, float, int, int, dict]:
     """
     Query Anthropic's API, optionally with tool use (Anthropic's equivalent to function calling).
 
     Extended thinking is automatically enabled when using model aliases with "-thinking" suffix.
-
-    Parameters:
-        thinking_callback: Optional callback function to process streamed thinking content
     """
     _setup_anthropic_client()
 
