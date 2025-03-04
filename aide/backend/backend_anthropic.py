@@ -122,14 +122,18 @@ def query(
         ) as stream:
             for event in stream:
                 if event.type == "content_block_start":
-                    print(f"\nStarting {event.content_block.type} block...")
+                    # print(f"\nStarting {event.content_block.type} block...")
+                    pass
                 elif event.type == "content_block_delta":
                     if event.delta.type == "thinking_delta":
-                        print(f"Thinking: {event.delta.thinking}", end="", flush=True)
+                        text = event.delta.thinking.replace("\n", "")
+                        print(text, end="", flush=True)
                     elif event.delta.type == "text_delta":
-                        print(f"Response: {event.delta.text}", end="", flush=True)
+                        text = event.delta.text.replace("\n", "")
+                        print(text, end="", flush=True)
                 elif event.type == "content_block_stop":
-                    print("\nBlock complete.")
+                    # print("\nBlock complete.")
+                    pass
 
         message = stream.get_final_message()
     else:
