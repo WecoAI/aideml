@@ -99,6 +99,8 @@ Set up your OpenAI (or Anthropic) API key:
 export OPENAI_API_KEY=<your API key>
 # or
 export ANTHROPIC_API_KEY=<your API key>
+# or
+export OPENROUTER_API_KEY=<your API key>
 ```
 
 To run AIDE:

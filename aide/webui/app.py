@@ -51,6 +51,7 @@ class WebUI:
         return {
             "openai_key": os.getenv("OPENAI_API_KEY", ""),
             "anthropic_key": os.getenv("ANTHROPIC_API_KEY", ""),
+            "openrouter_key": os.getenv("OPENROUTER_API_KEY", ""),
         }
 
     @staticmethod
@@ -127,9 +128,20 @@ class WebUI:
                 type="password",
                 label_visibility="collapsed",
             )
+            st.markdown(
+                "<p style='text-align: center;'>OpenRouter API Key</p>",
+                unsafe_allow_html=True,
+            )
+            openrouter_key = st.text_input(
+                "OpenRouter API Key",
+                value=self.env_vars["openrouter_key"],
+                type="password",
+                label_visibility="collapsed",
+            )
             if st.button("Save API Keys", use_container_width=True):
                 st.session_state.openai_key = openai_key
                 st.session_state.anthropic_key = anthropic_key
+                st.session_state.openrouter_key = openrouter_key
                 st.success("API keys saved!")
 
     def render_input_section(self, results_col):
@@ -340,6 +352,8 @@ class WebUI:
             os.environ["OPENAI_API_KEY"] = st.session_state.openai_key
         if st.session_state.get("anthropic_key"):
             os.environ["ANTHROPIC_API_KEY"] = st.session_state.anthropic_key
+        if st.session_state.get("openrouter_key"):
+            os.environ["OPENROUTER_API_KEY"] = st.session_state.openrouter_key
 
     def prepare_input_directory(self, files):
         """
