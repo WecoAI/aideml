@@ -4,7 +4,7 @@ funcy==2.0
 humanize==4.8.0
 jsonschema==4.19.2
 numpy==1.26.2
-openai>=1.3.5
+openai>=1.69.0
 anthropic>=0.20.0
 pandas==2.1.4
 pytest==7.4.3
