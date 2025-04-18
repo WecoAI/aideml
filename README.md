@@ -9,6 +9,7 @@
   <a href="https://pypi.org/project/aideml/"><img src="https://img.shields.io/pypi/v/aideml?color=blue" alt="PyPI"></a>&ensp;
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>&ensp;
   <a href="https://twitter.com/WecoAI"><img src="https://img.shields.io/twitter/follow/WecoAI?style=social" alt="Twitter Follow"></a>&ensp;
+  <a href="https://pepy.tech/projects/aideml"><img src="https://static.pepy.tech/badge/aideml" alt="PyPI Downloads"></a>&ensp;
 </p>
 
 AIDE is an LLM agent that generates solutions for machine learning tasks just from natural language descriptions of the task.
