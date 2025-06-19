@@ -2,11 +2,16 @@ from . import backend_anthropic, backend_openai, backend_openrouter
 from .utils import FunctionSpec, OutputType, PromptType, compile_prompt_to_md
 import re
 import logging
+import os
 
 logger = logging.getLogger("aide")
 
 
 def determine_provider(model: str) -> str:
+    # If OPENAI_BASE_URL is set, assume we're using a local LLM setup with OpenAI-compatible API
+    if os.getenv("OPENAI_BASE_URL"):
+        return "openai"
+
     if model.startswith("gpt-") or re.match(r"^o\d", model):
         return "openai"
     elif model.startswith("claude-"):
