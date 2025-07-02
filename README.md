@@ -1,39 +1,40 @@
-<h1 align="center">AIDE: The Machine Learning Engineer Agent</h1>
+<h1 align="center">AIDE ML — The Machine Learning Engineering Agent</h1>
+
+<p align="center"><em>
+LLM‑driven agent that writes, evaluates & improves machine‑learning code.
+</em></p>
 
 <p align="center">
-          📑 <a href="https://arxiv.org/abs/2502.13138">Paper</a>&nbsp&nbsp | &nbsp&nbsp📝 <a href="https://www.weco.ai/blog/technical-report">Blog</a>&nbsp&nbsp | &nbsp&nbsp🌐 <a href="https://www.aide.ml">Project</a>
+<a href="https://pypi.org/project/aideml/"><img src="https://img.shields.io/pypi/v/aideml?label=PyPI&logo=pypi" alt="PyPI"></a>
+<a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.10%2B-blue" alt="Python 3.10+"></a>
+<a href="https://arxiv.org/abs/2502.13138"><img src="https://img.shields.io/badge/arXiv-2502.13138-b31b1b?logo=arxiv&logoColor=white" alt="arXiv paper"></a>
+<img src="https://img.shields.io/github/license/WecoAI/aideml?color=brightgreen" alt="MIT License">
+<a href="https://pepy.tech/projects/aideml"><img src="https://static.pepy.tech/badge/aideml" alt="PyPI Downloads"></a>&ensp;
 </p>
 
 <p align="center">
-  <a href="https://www.python.org/downloads/release/python-3100/"><img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+"></a>
-  <a href="https://pypi.org/project/aideml/"><img src="https://img.shields.io/pypi/v/aideml?color=blue" alt="PyPI"></a>&ensp;
-  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>&ensp;
-  <a href="https://twitter.com/WecoAI"><img src="https://img.shields.io/twitter/follow/WecoAI?style=social" alt="Twitter Follow"></a>&ensp;
-  <a href="https://pepy.tech/projects/aideml"><img src="https://static.pepy.tech/badge/aideml" alt="PyPI Downloads"></a>&ensp;
+<a href="https://docs.weco.ai/cli/getting-started" target="_blank"><strong>Use in Production? Try Weco →</strong></a>
 </p>
 
-AIDE is an LLM agent that generates solutions for machine learning tasks just from natural language descriptions of the task.
+# What Is AIDE ML?
 
-In our own benchmark composed of over 60 Kaggle data science competitions, AIDE demonstrated impressive performance, surpassing 50% of Kaggle participants on average.
+**AIDE ML is the open‑source “reference build” of the AIDE algorithm**, a tree‑search agent that autonomously drafts, debugs and benchmarks code until a user‑defined metric is maximised (or minimised). It ships as a *research‑friendly* Python package with batteries‑included utilities (CLI, visualisation, config presets) so that academics and engineer‑researchers can **replicate the paper, test new ideas, or prototyping ML pipelines**.
 
-OpenAI's [MLE-bench](https://arxiv.org/pdf/2410.07095), a benchmark composed of 75 Kaggle machine learning tasks, shows that AIDE achieved four times more medals compared to the runner-up agent architecture.
+| Layer | Description | Where to find it |
+| --- | --- | --- |
+| **AIDE *algorithm*** | LLM‑guided agentic tree search in the space of code. | Described in our [paper](https://arxiv.org/abs/2502.13138). |
+| **AIDE ML *repo* (this repo)** | Lean implementation for experimentation & extension. | `pip install aideml` |
+| **Weco *product*** | The platform generalizes AIDE's capabilities to broader code optimization scenarios, providing experiment tracking and enhanced user control. | [weco.ai](https://weco.ai) |
 
-METR's [RE-Bench](https://arxiv.org/pdf/2411.15114) shows that AIDE is not only capable at machine learning tasks but generalizes to the AI R&D tasks such as optimizing low level Triton kernels and finetuning GPT-2 for QA, even surpassing the performance of human experts.
+### Who should use it?
 
-More specifically, AIDE has the following features:
+- **Agent‑architecture researchers** – swap in new search heuristics, evaluators or LLM back‑ends.
+- **ML Practitioners** – quickly build a high performance ML pipelines given a dataset.
 
-1. **Instruct with Natural Language**: Describe your problem or additional requirements and expert insights, all in natural language.
-2. **Deliver Solution in Source Code**: AIDE will generate Python scripts for the **tested** machine learning pipeline. Enjoy full transparency, reproducibility, and the freedom to further improve the source code!
-3. **Iterative Optimization**: AIDE iteratively runs, debugs, evaluates, and improves the ML code, all by itself.
-4. **Visualization**: We also provide tools to visualize the solution tree produced by AIDE for a better understanding of its experimentation process. This gives you insights not only about what works but also what doesn't.
+![Tree Search Visualization](https://github.com/WecoAI/aideml/assets/8918572/2401529c-b97e-4029-aed2-c3f376f54c3c)
 
-# How to Use AIDE?
-
+# How to Use AIDE ML?
 ## Running AIDE via the Web UI
-
-
-https://github.com/user-attachments/assets/1da42853-fe36-45e1-b6a2-852f88470af6
-
 
 We have developed a user-friendly Web UI using Streamlit to make it even easier to interact with AIDE.
 
@@ -243,19 +244,7 @@ You can customize the location of workspaces and logs by setting environment var
 
 Contribution guide will be available soon.
 
-## Algorithm Description
 
-AIDE's problem-solving approach is inspired by how human data scientists tackle challenges. It starts by generating a set of initial solution drafts and then iteratively refines and improves them based on performance feedback. This process is driven by a technique we call Solution Space Tree Search.
-
-At its core, Solution Space Tree Search consists of three main components:
-
-- **Solution Generator**: This component proposes new solutions by either creating novel drafts or making changes to existing solutions, such as fixing bugs or introducing improvements.
-- **Evaluator**: The evaluator assesses the quality of each proposed solution by running it and comparing its performance against the objective. This is implemented by instructing the LLM to include statements that print the evaluation metric and by having another LLM parse the printed logs to extract the evaluation metric.
-- **Base Solution Selector**: The solution selector picks the most promising solution from the explored options to serve as the starting point for the next iteration of refinement.
-
-By repeatedly applying these steps, AIDE navigates the vast space of possible solutions, progressively refining its approach until it converges on the optimal solution for the given data science problem.
-
-![Tree Search Visualization](https://github.com/WecoAI/aideml/assets/8918572/2401529c-b97e-4029-aed2-c3f376f54c3c)
 
 # Citation
 
