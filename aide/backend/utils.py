@@ -99,3 +99,21 @@ class FunctionSpec(DataClassJsonMixin):
             "type": "tool",  # Anthropic uses "tool" instead of "function"
             "name": self.name,
         }
+
+    @property
+    def as_openai_responses_tool_dict(self):
+        """Convert to OpenAI Responses API tool format."""
+        return {
+            "type": "function",
+            "name": self.name,
+            "description": self.description,
+            "parameters": self.json_schema,
+        }
+
+    @property
+    def openai_responses_tool_choice_dict(self):
+        """Convert to OpenAI Responses API tool choice format."""
+        return {
+            "type": "function",
+            "name": self.name,
+        }
