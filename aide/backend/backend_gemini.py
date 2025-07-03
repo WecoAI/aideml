@@ -25,15 +25,11 @@ GEMINI_TIMEOUT_EXCEPTIONS = (
 def _setup_gemini_client():
     global _client
     gemini_base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
-    
+
     # Check for Gemini API key in environment variables
-    api_key = os.getenv('GEMINI_API_KEY')
-    
-    _client = openai.OpenAI(
-        api_key=api_key,
-        base_url=gemini_base_url,
-        max_retries=0
-    )
+    api_key = os.getenv("GEMINI_API_KEY")
+
+    _client = openai.OpenAI(api_key=api_key, base_url=gemini_base_url, max_retries=0)
 
 
 def query(
