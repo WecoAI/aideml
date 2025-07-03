@@ -7,7 +7,7 @@ logger = logging.getLogger("aide")
 
 
 def determine_provider(model: str) -> str:
-    if model.startswith("gpt-") or re.match(r"^o\d", model):
+    if re.match(r"^(gpt-|o\d-|codex-mini-latest$)", model):
         return "openai"
     elif model.startswith("claude-"):
         return "anthropic"
@@ -53,9 +53,6 @@ def query(
         "temperature": temperature,
         "max_tokens": max_tokens,
     }
-    assert (
-        "max_tokens" not in model_kwargs and "max_completion_tokens" not in model_kwargs
-    ), "max_tokens and max_completion_tokens cannot both be provided, only max_tokens is supported."
 
     provider = determine_provider(model)
     query_func = provider_to_query_func[provider]
