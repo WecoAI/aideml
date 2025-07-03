@@ -51,6 +51,7 @@ class WebUI:
         return {
             "openai_key": os.getenv("OPENAI_API_KEY", ""),
             "anthropic_key": os.getenv("ANTHROPIC_API_KEY", ""),
+            "gemini_key": os.getenv("GEMINI_API_KEY", ""),
             "openrouter_key": os.getenv("OPENROUTER_API_KEY", ""),
         }
 
@@ -352,6 +353,8 @@ class WebUI:
             os.environ["OPENAI_API_KEY"] = st.session_state.openai_key
         if st.session_state.get("anthropic_key"):
             os.environ["ANTHROPIC_API_KEY"] = st.session_state.anthropic_key
+        if st.session_state.get("gemini_key"):
+            os.environ["GEMINI_API_KEY"] = st.session_state.gemini_key
         if st.session_state.get("openrouter_key"):
             os.environ["OPENROUTER_API_KEY"] = st.session_state.openrouter_key
 
