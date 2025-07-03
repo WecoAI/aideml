@@ -53,14 +53,9 @@ def query(
         "temperature": temperature,
         "max_tokens": max_tokens,
     }
-
-    # Handle models with beta limitations
-    # ref: https://platform.openai.com/docs/guides/reasoning/beta-limitations
-    if re.match(r"^o\d", model):
-        if system_message:
-            user_message = system_message
-        system_message = None
-        model_kwargs["temperature"] = 1
+    assert (
+        "max_tokens" not in model_kwargs and "max_completion_tokens" not in model_kwargs
+    ), "max_tokens and max_completion_tokens cannot both be provided, only max_tokens is supported."
 
     provider = determine_provider(model)
     query_func = provider_to_query_func[provider]
