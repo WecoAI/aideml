@@ -20,6 +20,8 @@ LLM‑driven agent that writes, evaluates & improves machine‑learning code.
 
 **AIDE ML is the open‑source “reference build” of the AIDE algorithm**, a tree‑search agent that autonomously drafts, debugs and benchmarks code until a user‑defined metric is maximised (or minimised). It ships as a *research‑friendly* Python package with batteries‑included utilities (CLI, visualisation, config presets) so that academics and engineer‑researchers can **replicate the paper, test new ideas, or prototyping ML pipelines**.
 
+![Tree Search Visualization](https://github.com/WecoAI/aideml/assets/8918572/2401529c-b97e-4029-aed2-c3f376f54c3c)
+
 | Layer | Description | Where to find it |
 | --- | --- | --- |
 | **AIDE *algorithm*** | LLM‑guided agentic tree search in the space of code. | Described in our [paper](https://arxiv.org/abs/2502.13138). |
@@ -31,220 +33,147 @@ LLM‑driven agent that writes, evaluates & improves machine‑learning code.
 - **Agent‑architecture researchers** – swap in new search heuristics, evaluators or LLM back‑ends.
 - **ML Practitioners** – quickly build a high performance ML pipelines given a dataset.
 
-![Tree Search Visualization](https://github.com/WecoAI/aideml/assets/8918572/2401529c-b97e-4029-aed2-c3f376f54c3c)
+# Key Capabilities
 
-# How to Use AIDE ML?
-## Running AIDE via the Web UI
+- **Natural‑language task specification**  Point the agent at a dataset and describe *goal* + *metric* in plain English. No YAML grids or bespoke wrappers.  `aide data_dir=…  goal="Predict churn"  eval="AUROC"` 
+- **Iterative *agentic tree search*** Each python script becomes a node in a solution tree; LLM‑generated patches spawn children; metric feedback prunes and guides the search. OpenAI’s **[MLE‑Bench](https://arxiv.org/abs/2410.07095)** (75 Kaggle comps) found the tree‑search of AIDE wins **4 × more medals** than the best linear agent (OpenHands). 
 
-We have developed a user-friendly Web UI using Streamlit to make it even easier to interact with AIDE.
+<div align="center">
+<img src="https://github.com/user-attachments/assets/a48aa65e-360d-4d91-b4ad-98b0fe2585d4" width="80%">
+</div>
 
-### Prerequisites
+<details>
+<summary>Utility features provided by this repo</summary>
 
-Ensure you have installed the development version of AIDE and its dependencies as described in the [Development](#development) section.
+- **HTML visualiser** – inspect the full solution tree and code attached to each node.
+- **Streamlit UI** – prototype ML solution .
+- **Model‑neutral plumbing** – OpenAI, Anthropic, Gemini, or any local LLM that speaks the OpenAI API.
 
-### Running the Web UI
+</details>
 
-Navigate to the `aide/webui` directory and run the Streamlit application:
+## Featured Research built on/with AIDE
+
+| Institution | Paper / Project Name | Links |
+|-------------|----------------------|-------|
+| **OpenAI** | MLE-bench: Evaluating Machine-Learning Agents on Machine-Learning Engineering | [Paper](https://arxiv.org/abs/2410.07095), [GitHub](https://github.com/openai/mle-bench) |
+| **METR** | RE-Bench: Evaluating frontier AI R&D capabilities of language-model agents against human experts | [Paper](https://arxiv.org/abs/2411.15114), [GitHub](https://github.com/METR/RE-Bench) |
+| **Sakana AI** | The AI Scientist-v2: Workshop-Level Automated Scientific Discovery via Agentic Tree Search | [Paper](https://arxiv.org/abs/2504.08066), [GitHub](https://github.com/SakanaAI/AI-Scientist-v2) |
+| **Meta** | The Automated LLM Speedrunning Benchmark: Reproducing NanoGPT Improvements | [Paper](https://arxiv.org/abs/2506.22419), [GitHub](https://github.com/facebookresearch/llm-speedrunner) |
+
+> *Know another public project that cites or forks AIDE?  
+> [Open a PR](https://github.com/WecoAI/aideml/pulls) and add it to the table!*
+
+
+# How to Use AIDE ML
+
+## Quick Start
 
 ```bash
+# 1  Install
+pip install -U aideml
+
+# 2  Set an LLM key
+export OPENAI_API_KEY=<your‑key>
+
+# 3  Run an optimisation
+aide data_dir="example_tasks/house_prices" \
+     goal="Predict the sales price for each house" \
+     eval="RMSE between log‑prices"
+
+```
+
+After the run finishes you’ll find:
+
+- `logs/<id>/best_solution.py` – best code found
+- `logs/<id>/tree_plot.html` – click to inspect the solution tree
+
+---
+
+## Web UI
+
+```bash
+pip install -U aideml   # adds streamlit
 cd aide/webui
 streamlit run app.py
+
 ```
 
-Alternatively, you can run it from the root directory:
+Use the sidebar to paste your API key, upload data, set **Goal** & **Metric**, then press **Run AIDE**.
+
+The UI shows live logs, the solution tree, and the best code.
+
+---
+
+## Advanced CLI Options
 
 ```bash
-streamlit run aide/webui/app.py
+# Choose a different coding model and run 50 steps
+aide agent.code.model="claude-4-sonnet" \
+     agent.steps=50 \
+     data_dir=… goal=… eval=…
+
 ```
 
-### Using the Web UI
+Common flags
 
-1. **API Key Configuration**: In the sidebar, input your OpenAI API key or Anthropic API key and click "Save API Keys".
+| Flag | Purpose | Default |
+| --- | --- | --- |
+| `agent.code.model` | LLM used to write code | `gpt-4-turbo` |
+| `agent.steps` | Improvement iterations | `20` |
+| `agent.search.num_drafts` | Drafts per step | `5` |
 
-2. **Input Data**:
-   - You can either **upload your dataset files** (`.csv`, `.txt`, `.json`, `.md`) using the "Upload Data Files" feature.
-   - Or click on "Load Example Experiment" to use the example house prices dataset.
+---
 
-3. **Define Goal and Evaluation Criteria**:
-   - In the "Goal" text area, describe what you want the model to achieve (e.g., "Predict the sales price for each house").
-   - In the "Evaluation Criteria" text area, specify the evaluation metric (e.g., "Use the RMSE metric between the logarithm of the predicted and observed values.").
-
-4. **Configure Steps**:
-   - Use the slider to set the number of steps (iterations) for the experiment.
-
-5. **Run the Experiment**:
-   - Click on "Run AIDE" to start the experiment.
-   - Progress and status updates will be displayed in the "Results" section.
-
-6. **View Results**:
-   - **Tree Visualization**: Explore the solution tree to understand how AIDE experimented and optimized the models.
-   - **Best Solution**: View the Python code of the best solution found.
-   - **Config**: Review the configuration used for the experiment.
-   - **Journal**: Examine the detailed journal entries for each step.
-
-
-## Running AIDE via the Command Line
-
-### Setup
-
-Make sure you have `Python>=3.10` installed and run:
-
-```bash
-pip install -U aideml
-```
-
-Also install `unzip` to allow the agent to autonomously extract your data.
-
-Set up your OpenAI (or Anthropic) API key:
-
-```bash
-export OPENAI_API_KEY=<your API key>
-# or
-export ANTHROPIC_API_KEY=<your API key>
-# or
-export OPENROUTER_API_KEY=<your API key>
-```
-
-To run AIDE:
-
-```bash
-aide data_dir="<path to your data directory>" goal="<describe the agent's goal for your task>" eval="<(optional) describe the evaluation metric the agent should use>"
-```
-
-For example, to run AIDE on the example [house price prediction task](https://www.kaggle.com/competitions/house-prices-advanced-regression-techniques/data):
-
-```bash
-aide data_dir="example_tasks/house_prices" goal="Predict the sales price for each house" eval="Use the RMSE metric between the logarithm of the predicted and observed values."
-```
-
-Options:
-
-- `data_dir` (required): A directory containing all the data relevant for your task (`.csv` files, images, etc.).
-- `goal`: Describe what you want the models to predict in your task, for example, "Build a time series forecasting model for bitcoin close price" or "Predict sales price for houses".
-- `eval`: The evaluation metric used to evaluate the ML models for the task (e.g., accuracy, F1, Root-Mean-Squared-Error, etc.).
-
-Alternatively, you can provide the entire task description as a `desc_str` string, or write it in a plaintext file and pass its path as `desc_file` ([example file](aide/example_tasks/house_prices.md)).
-
-```bash
-aide data_dir="my_data_dir" desc_file="my_task_description.txt"
-```
-
-The result of the run will be stored in the `logs` directory.
-
-- `logs/<experiment-id>/best_solution.py`: Python code of the _best solution_ according to the validation metric.
-- `logs/<experiment-id>/journal.json`: A JSON file containing the metadata of the experiment runs, including all the code generated in intermediate steps, plan, evaluation results, etc.
-- `logs/<experiment-id>/tree_plot.html`: You can open it in your browser. It contains a visualization of the solution tree, which details the experimentation process of finding and optimizing ML code. You can explore and interact with the tree visualization to view what plan and code AIDE comes up with in each step.
-
-The `workspaces` directory will contain all the files and data that the agent generated.
-
-### Advanced Usage
-
-To further customize the behavior of AIDE, some useful options might be:
-
-- `agent.code.model=...` to configure which model the agent should use for coding (default is `gpt-4-turbo`).
-- `agent.steps=...` to configure how many improvement iterations the agent should run (default is 20).
-- `agent.search.num_drafts=...` to configure the number of initial drafts the agent should generate (default is 5).
-
-You can check the [`config.yaml`](aide/utils/config.yaml) file for more options.
-
-### Using Local LLMs
-
-AIDE supports using local LLMs through OpenAI-compatible APIs. Here's how to set it up:
-
-1. Set up a local LLM server with an OpenAI-compatible API endpoint. You can use:
-   - [Ollama](https://github.com/ollama/ollama)
-   - or similar solutions.
-
-2. Configure your environment to use the local endpoint:
-
-   ```bash
-   export OPENAI_BASE_URL="http://localhost:11434/v1"  # For Ollama
-   export OPENAI_API_KEY="local-llm"  # Can be any string if your local server doesn't require authentication
-   ```
-
-3. Update the model configuration in your AIDE command or config. For example, with Ollama:
-
-   ```bash
-   # Example with house prices dataset
-   aide agent.code.model="qwen2.5" agent.feedback.model="qwen2.5" report.model="qwen2.5" \
-       data_dir="example_tasks/house_prices" \
-       goal="Predict the sales price for each house" \
-       eval="Use the RMSE metric between the logarithm of the predicted and observed values."
-   ```
-
-## Using AIDE in Python
-
-Using AIDE within your Python script/project is easy. Follow the setup steps above, and then create an AIDE experiment like below and start running:
+## Use AIDE ML Inside Python
 
 ```python
 import aide
+
 exp = aide.Experiment(
-    data_dir="example_tasks/bitcoin_price",  # replace this with your own directory
-    goal="Build a time series forecasting model for bitcoin close price.",  # replace with your own goal description
-    eval="RMSLE"  # replace with your own evaluation metric
+    data_dir="example_tasks/bitcoin_price",
+    goal="Forecast BTC closing price",
+    eval="RMSLE"
 )
 
-best_solution = exp.run(steps=10)
+best = exp.run(steps=10)
+print(best.valid_metric)
+print(best.code)
 
-print(f"Best solution has validation metric: {best_solution.valid_metric}")
-print(f"Best solution code: {best_solution.code}")
 ```
 
-## Development
+---
 
-To install AIDE for development, clone this repository and install it locally:
+## Power‑User Extras
+
+### Local LLM (Ollama example)
+
+```bash
+export OPENAI_BASE_URL="http://localhost:11434/v1"
+export OPENAI_API_KEY="local-llm"
+aide agent.code.model="qwen2.5" data_dir=… goal=… eval=…
+
+```
+
+### Docker
+
+```bash
+docker build -t aide .
+docker run -it --rm \
+  -v "${LOGS_DIR:-$(pwd)/logs}:/app/logs" \
+  -v "${WORKSPACE_BASE:-$(pwd)/workspaces}:/app/workspaces" \
+  -v "$(pwd)/aide/example_tasks:/app/data" \
+  -e OPENAI_API_KEY="your-actual-api-key" \
+  aide data_dir=/app/data/house_prices goal="Predict price" eval="RMSE"
+
+```
+
+### Development install
 
 ```bash
 git clone https://github.com/WecoAI/aideml.git
-cd aideml
-pip install -e .
+cd aideml && pip install -e .
+
 ```
-
-### Running the Web UI in Development Mode
-
-Ensure that you have all the required development dependencies installed. Then, you can run the Web UI as follows:
-
-```bash
-cd aide/webui
-streamlit run app.py
-```
-
-## Using AIDE with Docker
-
-You can also run AIDE using Docker:
-
-1. **Build the Docker Image**:
-
-   ```bash
-   docker build -t aide .
-   ```
-
-2. **Run AIDE with Docker** (example with house prices task):
-
-   ```bash
-   # Set custom workspace and logs location (optional)
-   export WORKSPACE_BASE=$(pwd)/workspaces
-   export LOGS_DIR=$(pwd)/logs
-
-   docker run -it --rm \
-             -v "${LOGS_DIR:-$(pwd)/logs}:/app/logs" \
-             -v "${WORKSPACE_BASE:-$(pwd)/workspaces}:/app/workspaces" \
-             -v "$(pwd)/aide/example_tasks:/app/data" \
-             -e OPENAI_API_KEY="your-actual-api-key" \
-             aide \
-             data_dir=/app/data/house_prices \
-             goal="Predict the sales price for each house" \
-             eval="Use the RMSE metric between the logarithm of the predicted and observed values."
-   ```
-
-You can customize the location of workspaces and logs by setting environment variables before running the container:
-
-- `WORKSPACE_BASE`: Sets the base directory for AIDE workspaces (default: `$(pwd)/workspaces`)
-- `LOGS_DIR`: Sets the directory for AIDE logs (default: `$(pwd)/logs`)
-
-Contribution guide will be available soon.
-
-
 
 # Citation
 
