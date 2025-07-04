@@ -7,7 +7,7 @@ logger = logging.getLogger("aide")
 
 
 def determine_provider(model: str) -> str:
-    if model.startswith("gpt-") or re.match(r"^o\d", model):
+    if re.match(r"^(gpt-|o\d-|codex-mini-latest$)", model):
         return "openai"
     elif model.startswith("claude-"):
         return "anthropic"
@@ -53,14 +53,6 @@ def query(
         "temperature": temperature,
         "max_tokens": max_tokens,
     }
-
-    # Handle models with beta limitations
-    # ref: https://platform.openai.com/docs/guides/reasoning/beta-limitations
-    if re.match(r"^o\d", model):
-        if system_message:
-            user_message = system_message
-        system_message = None
-        model_kwargs["temperature"] = 1
 
     provider = determine_provider(model)
     query_func = provider_to_query_func[provider]
