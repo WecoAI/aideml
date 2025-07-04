@@ -73,7 +73,7 @@ LLM‑driven agent that writes, evaluates & improves machine‑learning code.
 pip install -U aideml
 
 # 2  Set an LLM key
-export OPENAI_API_KEY=<your‑key>
+export OPENAI_API_KEY=<your‑key>  # https://platform.openai.com/api-keys
 
 # 3  Run an optimisation
 aide data_dir="example_tasks/house_prices" \
