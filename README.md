@@ -129,16 +129,22 @@ Common flags
 ```python
 import aide
 
-exp = aide.Experiment(
-    data_dir="example_tasks/bitcoin_price",
-    goal="Forecast BTC closing price",
-    eval="RMSLE"
-)
+def main():
+    print("Starting experiment...")
+    exp = aide.Experiment(
+        data_dir="example_tasks/bitcoin_price",  # replace this with your own directory
+        goal="Build a time series forecasting model for bitcoin close price.",  # replace with your own goal description
+        eval="RMSLE"  # replace with your own evaluation metric
+    )
 
-best = exp.run(steps=10)
-print(best.valid_metric)
-print(best.code)
+    best_solution = exp.run(steps=2)
 
+    print(f"Best solution has validation metric: {best_solution.valid_metric}")
+    print(f"Best solution code: {best_solution.code}")
+    print("Experiment finished.")
+
+if __name__ == '__main__':
+    main()
 ```
 
 ---
