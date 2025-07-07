@@ -13,7 +13,7 @@ LLM‑driven agent that writes, evaluates & improves machine‑learning code.
 </p>
 
 <p align="center">
-<a href="https://docs.weco.ai/cli/getting-started" target="_blank"><strong>Use in Production? Try Weco →</strong></a>
+<a href="https://docs.weco.ai/cli/getting-started?utm_source=aidemlrepo" target="_blank"><strong>Use in Production? Try Weco →</strong></a>
 </p>
 
 # What Is AIDE ML?
@@ -26,7 +26,7 @@ LLM‑driven agent that writes, evaluates & improves machine‑learning code.
 | --- | --- | --- |
 | **AIDE *algorithm*** | LLM‑guided agentic tree search in the space of code. | Described in our [paper](https://arxiv.org/abs/2502.13138). |
 | **AIDE ML *repo* (this repo)** | Lean implementation for experimentation & extension. | `pip install aideml` |
-| **Weco *product*** | The platform generalizes AIDE's capabilities to broader code optimization scenarios, providing experiment tracking and enhanced user control. | [weco.ai](https://weco.ai) |
+| **Weco *product*** | The platform generalizes AIDE's capabilities to broader code optimization scenarios, providing experiment tracking and enhanced user control. | [weco.ai](https://weco.ai?utm_source=aidemlrepo) |
 
 ### Who should use it?
 
