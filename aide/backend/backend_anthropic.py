@@ -87,16 +87,16 @@ def query(
     ):
         block = message.content[0]  # This is a "ToolUseBlock"
         # block has attributes: type, id, name, input
-        assert (
-            block.name == func_spec.name
-        ), f"Function name mismatch: expected {func_spec.name}, got {block.name}"
+        assert block.name == func_spec.name, (
+            f"Function name mismatch: expected {func_spec.name}, got {block.name}"
+        )
         output = block.input  # Anthropic calls the parameters "input"
     else:
         # For non-tool responses, ensure we have text content
         assert len(message.content) == 1, "Expected single content item"
-        assert (
-            message.content[0].type == "text"
-        ), f"Expected text response, got {message.content[0].type}"
+        assert message.content[0].type == "text", (
+            f"Expected text response, got {message.content[0].type}"
+        )
         output = message.content[0].text
 
     in_tokens = message.usage.input_tokens
