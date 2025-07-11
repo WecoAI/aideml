@@ -155,7 +155,6 @@ if __name__ == '__main__':
 
 ```bash
 export OPENAI_BASE_URL="http://localhost:11434/v1"
-export OPENAI_API_KEY="local-llm"
 aide agent.code.model="qwen2.5" data_dir=… goal=… eval=…
 
 ```

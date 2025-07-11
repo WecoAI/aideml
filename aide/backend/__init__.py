@@ -2,17 +2,22 @@ from . import backend_anthropic, backend_openai, backend_openrouter, backend_gem
 from .utils import FunctionSpec, OutputType, PromptType, compile_prompt_to_md
 import re
 import logging
+import os
 
 logger = logging.getLogger("aide")
 
 
 def determine_provider(model: str) -> str:
+    # Check if model matches OpenAI patterns first
     if re.match(r"^(gpt-|o\d-|codex-mini-latest$)", model):
         return "openai"
     elif model.startswith("claude-"):
         return "anthropic"
     elif model.startswith("gemini-"):
         return "gemini"
+    # If OPENAI_BASE_URL is set, use openai provider for non-standard models
+    elif os.getenv("OPENAI_BASE_URL"):
+        return "openai"
     # all other models are handle by openrouter
     else:
         return "openrouter"
