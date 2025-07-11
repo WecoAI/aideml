@@ -8,7 +8,7 @@ openai>=1.69.0
 anthropic>=0.20.0
 pandas==2.1.4
 pytest==7.4.3
-requests==2.32.2
+requests>=2.32.4
 scikit-learn==1.5.0
 rich==13.7.0
 scipy==1.11.4
