@@ -92,6 +92,8 @@ def query(
             filtered_kwargs["tools"] = [func_spec.as_openai_responses_tool_dict]
             filtered_kwargs["tool_choice"] = func_spec.openai_responses_tool_choice_dict
 
+    logger.info(f"OpenAI API request: system={system_message}, user={user_message}")
+
     t0 = time.time()
 
     # Attempt the API call
@@ -227,5 +229,10 @@ def query(
         "model": response.model,
         "created": getattr(response, "created", None),
     }
+
+    logger.info(
+        f"OpenAI API call completed - {response.model} - {req_time:.2f}s - {in_tokens + out_tokens} tokens (in: {in_tokens}, out: {out_tokens})"
+    )
+    logger.info(f"OpenAI API response: {output}")
 
     return output, req_time, in_tokens, out_tokens, info

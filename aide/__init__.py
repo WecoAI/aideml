@@ -21,7 +21,6 @@ class Solution:
 
 
 class Experiment:
-
     def __init__(self, data_dir: str, goal: str, eval: str | None = None):
         """Initialize a new experiment run.
 
@@ -49,7 +48,8 @@ class Experiment:
             journal=self.journal,
         )
         self.interpreter = Interpreter(
-            self.cfg.workspace_dir, **OmegaConf.to_container(self.cfg.exec)  # type: ignore
+            self.cfg.workspace_dir,
+            **OmegaConf.to_container(self.cfg.exec),  # type: ignore
         )
 
     def run(self, steps: int) -> Solution:

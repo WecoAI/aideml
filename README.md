@@ -79,7 +79,6 @@ export OPENAI_API_KEY=<your‑key>  # https://platform.openai.com/api-keys
 aide data_dir="example_tasks/house_prices" \
      goal="Predict the sales price for each house" \
      eval="RMSE between log‑prices"
-
 ```
 
 After the run finishes you’ll find:
@@ -95,7 +94,6 @@ After the run finishes you’ll find:
 pip install -U aideml   # adds streamlit
 cd aide/webui
 streamlit run app.py
-
 ```
 
 Use the sidebar to paste your API key, upload data, set **Goal** & **Metric**, then press **Run AIDE**.
@@ -111,7 +109,6 @@ The UI shows live logs, the solution tree, and the best code.
 aide agent.code.model="claude-4-sonnet" \
      agent.steps=50 \
      data_dir=… goal=… eval=…
-
 ```
 
 Common flags
@@ -128,8 +125,12 @@ Common flags
 
 ```python
 import aide
+import logging
 
 def main():
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    aide_logger = logging.getLogger("aide")
+    aide_logger.setLevel(logging.INFO)
     print("Starting experiment...")
     exp = aide.Experiment(
         data_dir="example_tasks/bitcoin_price",  # replace this with your own directory
@@ -156,7 +157,6 @@ if __name__ == '__main__':
 ```bash
 export OPENAI_BASE_URL="http://localhost:11434/v1"
 aide agent.code.model="qwen2.5" data_dir=… goal=… eval=…
-
 ```
 
 ### Docker
@@ -169,7 +169,6 @@ docker run -it --rm \
   -v "$(pwd)/aide/example_tasks:/app/data" \
   -e OPENAI_API_KEY="your-actual-api-key" \
   aide data_dir=/app/data/house_prices goal="Predict price" eval="RMSE"
-
 ```
 
 ### Development install
@@ -177,7 +176,6 @@ docker run -it --rm \
 ```bash
 git clone https://github.com/WecoAI/aideml.git
 cd aideml && pip install -e .
-
 ```
 
 # Citation

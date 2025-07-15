@@ -36,12 +36,12 @@ def file_tree(path: Path, depth=0) -> str:
     dirs = [p for p in Path(path).iterdir() if p.is_dir()]
     max_n = 4 if len(files) > 30 else 8
     for p in sorted(files)[:max_n]:
-        result.append(f"{' '*depth*4}{p.name} ({get_file_len_size(p)[1]})")
+        result.append(f"{' ' * depth * 4}{p.name} ({get_file_len_size(p)[1]})")
     if len(files) > max_n:
-        result.append(f"{' '*depth*4}... and {len(files)-max_n} other files")
+        result.append(f"{' ' * depth * 4}... and {len(files) - max_n} other files")
 
     for p in sorted(dirs):
-        result.append(f"{' '*depth*4}{p.name}/")
+        result.append(f"{' ' * depth * 4}{p.name}/")
         result.append(file_tree(p, depth + 1))
 
     return "\n".join(result)
@@ -79,7 +79,7 @@ def preview_csv(p: Path, file_name: str, simple=True) -> str:
         cols_str = ", ".join(cols[:sel_cols])
         res = f"The columns are: {cols_str}"
         if len(cols) > sel_cols:
-            res += f"... and {len(cols)-sel_cols} more columns"
+            res += f"... and {len(cols) - sel_cols} more columns"
         out.append(res)
     else:
         out.append("Here is some information about the columns:")
@@ -91,7 +91,7 @@ def preview_csv(p: Path, file_name: str, simple=True) -> str:
 
             if dtype == "bool":
                 v = df[col][df[col].notnull()].mean()
-                out.append(f"{name} is {v*100:.2f}% True, {100-v*100:.2f}% False")
+                out.append(f"{name} is {v * 100:.2f}% True, {100 - v * 100:.2f}% False")
             elif df[col].nunique() < 10:
                 out.append(
                     f"{name} has {df[col].nunique()} unique values: {df[col].unique().tolist()}"

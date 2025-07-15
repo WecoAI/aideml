@@ -69,6 +69,8 @@ def query(
 
     messages = opt_messages_to_list(None, user_message)
 
+    logger.info(f"Anthropic API request: system={system_message}, user={user_message}")
+
     t0 = time.time()
     message = backoff_create(
         _client.messages.create,
@@ -106,5 +108,10 @@ def query(
         "stop_reason": message.stop_reason,
         "model": message.model,
     }
+
+    logger.info(
+        f"Anthropic API call completed - {message.model} - {req_time:.2f}s - {in_tokens + out_tokens} tokens (in: {in_tokens}, out: {out_tokens})"
+    )
+    logger.info(f"Anthropic API response: {output}")
 
     return output, req_time, in_tokens, out_tokens, info

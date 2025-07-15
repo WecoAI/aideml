@@ -58,6 +58,8 @@ def query(
         filtered_kwargs["tools"] = [func_spec.as_openai_tool_dict]
         filtered_kwargs["tool_choice"] = func_spec.openai_tool_choice_dict
 
+    logger.info(f"Gemini API request: system={system_message}, user={user_message}")
+
     completion = None
     t0 = time.time()
 
@@ -134,5 +136,10 @@ def query(
         "model": completion.model,
         "created": getattr(completion, "created", None),
     }
+
+    logger.info(
+        f"Gemini API call completed - {completion.model} - {req_time:.2f}s - {in_tokens + out_tokens} tokens (in: {in_tokens}, out: {out_tokens})"
+    )
+    logger.info(f"Gemini API response: {output}")
 
     return output, req_time, in_tokens, out_tokens, info
