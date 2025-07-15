@@ -125,8 +125,12 @@ Common flags
 
 ```python
 import aide
+import logging
 
 def main():
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    aide_logger = logging.getLogger("aide")
+    aide_logger.setLevel(logging.INFO)
     print("Starting experiment...")
     exp = aide.Experiment(
         data_dir="example_tasks/bitcoin_price",  # replace this with your own directory
