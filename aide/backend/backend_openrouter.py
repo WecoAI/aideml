@@ -52,6 +52,8 @@ def query(
         if message
     ]
 
+    logger.info(f"OpenRouter API request: system={system_message}, user={user_message}")
+
     t0 = time.time()
     completion = backoff_create(
         _client.chat.completions.create,
@@ -77,5 +79,10 @@ def query(
         "model": completion.model,
         "created": completion.created,
     }
+
+    logger.info(
+        f"OpenRouter API call completed - {completion.model} - {req_time:.2f}s - {in_tokens + out_tokens} tokens (in: {in_tokens}, out: {out_tokens})"
+    )
+    logger.info(f"OpenRouter API response: {output}")
 
     return output, req_time, in_tokens, out_tokens, info

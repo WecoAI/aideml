@@ -120,13 +120,13 @@ class InteractiveSession(DataClassJsonMixin):
         trace = []
         header_prefix = "## " if comment_headers else ""
         for n in self.nodes:
-            trace.append(f"\n{header_prefix}In [{n.step+1}]:\n")
+            trace.append(f"\n{header_prefix}In [{n.step + 1}]:\n")
             trace.append(n.code)
-            trace.append(f"\n{header_prefix}Out [{n.step+1}]:\n")
+            trace.append(f"\n{header_prefix}Out [{n.step + 1}]:\n")
             trace.append(n.term_out)
 
         if include_prompt and self.nodes:
-            trace.append(f"\n{header_prefix}In [{self.nodes[-1].step+2}]:\n")
+            trace.append(f"\n{header_prefix}In [{self.nodes[-1].step + 2}]:\n")
 
         return "\n".join(trace).strip()
 

@@ -76,7 +76,8 @@ def run():
         journal=journal,
     )
     interpreter = Interpreter(
-        cfg.workspace_dir, **OmegaConf.to_container(cfg.exec)  # type: ignore
+        cfg.workspace_dir,
+        **OmegaConf.to_container(cfg.exec),  # type: ignore
     )
 
     global_step = len(journal)
