@@ -161,6 +161,16 @@ export OPENAI_BASE_URL="http://localhost:11434/v1"
 aide agent.code.model="qwen2.5" data_dir=… goal=… eval=…
 ```
 
+Note: evaluator defaults to gpt‑4o.
+
+### Fully local (code + evaluator — no external calls)
+```
+export OPENAI_BASE_URL="http://localhost:11434/v1"
+aide agent.code.model="qwen2.5" agent.feedback.model="qwen2.5" data_dir=… goal=… eval=…
+```
+
+Tip: Expect some performance drop with fully local evaluators.
+
 ### Docker
 
 ```bash
