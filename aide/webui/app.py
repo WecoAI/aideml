@@ -139,10 +139,35 @@ class WebUI:
                 type="password",
                 label_visibility="collapsed",
             )
+            st.markdown(
+                "<p style='text-align: center;'>Gemini API Key</p>",
+                unsafe_allow_html=True,
+            )
+            gemini_key = st.text_input(
+                "Gemini API Key",
+                value=self.env_vars["gemini_key"],
+                type="password",
+                label_visibility="collapsed",
+                key="gemini_key",
+            )
+            st.markdown(
+                "<p style='text-align: center;'>Gemini Model (e.g. gemini-pro)</p>",
+                unsafe_allow_html=True,
+            )
+            gemini_model = st.text_input(
+                "Gemini Model",
+                value=st.session_state.get("gemini_model", "gemini-2.5-pro"),
+                placeholder="e.g. gemini-2.5-pro",
+                label_visibility="collapsed",
+                key="gemini_model",
+            )
             if st.button("Save API Keys", use_container_width=True):
                 st.session_state.openai_key = openai_key
                 st.session_state.anthropic_key = anthropic_key
                 st.session_state.openrouter_key = openrouter_key
+                st.session_state.gemini_key = gemini_key
+                # persist gemini model selection as well
+                st.session_state.gemini_model = gemini_model
                 st.success("API keys saved!")
 
     def render_input_section(self, results_col):
@@ -157,8 +182,10 @@ class WebUI:
         goal_text, eval_text, num_steps = self.handle_user_inputs()
         if st.button("Run AIDE", type="primary", use_container_width=True):
             with st.spinner("AIDE is running..."):
+                # Allow optional override of Gemini model via session state
+                gemini_model = st.session_state.get("gemini_model")
                 results = self.run_aide(
-                    uploaded_files, goal_text, eval_text, num_steps, results_col
+                    uploaded_files, goal_text, eval_text, num_steps, results_col, gemini_model
                 )
                 st.session_state.results = results
 
@@ -261,7 +288,7 @@ class WebUI:
 
         return example_files
 
-    def run_aide(self, files, goal_text, eval_text, num_steps, results_col):
+    def run_aide(self, files, goal_text, eval_text, num_steps, results_col, gemini_model: str | None = None):
         """
         Run the AIDE experiment with the provided inputs.
 
@@ -283,7 +310,7 @@ class WebUI:
             if not input_dir:
                 return None
 
-            experiment = self.initialize_experiment(input_dir, goal_text, eval_text)
+            experiment = self.initialize_experiment(input_dir, goal_text, eval_text, gemini_model=gemini_model)
 
             # Create separate placeholders for progress and config
             progress_placeholder = results_col.empty()
@@ -384,7 +411,7 @@ class WebUI:
         return input_dir
 
     @staticmethod
-    def initialize_experiment(input_dir, goal_text, eval_text):
+    def initialize_experiment(input_dir, goal_text, eval_text, gemini_model: str | None = None):
         """
         Initialize the AIDE Experiment.
 
@@ -397,6 +424,30 @@ class WebUI:
             Experiment: The initialized Experiment object.
         """
         experiment = Experiment(data_dir=str(input_dir), goal=goal_text, eval=eval_text)
+
+        # If a Gemini model override was provided (either via explicit argument or
+        # via session state), apply it to the agent/report configs so the
+        # built-in gemini backend will be used when the model string starts with 'gemini-'.
+        if not gemini_model:
+            try:
+                gemini_model = st.session_state.get("gemini_model")
+            except Exception:
+                gemini_model = None
+
+        if gemini_model:
+            try:
+                experiment.cfg.agent.code.model = gemini_model
+            except Exception:
+                pass
+            try:
+                experiment.cfg.agent.feedback.model = gemini_model
+            except Exception:
+                pass
+            try:
+                experiment.cfg.report.model = gemini_model
+            except Exception:
+                pass
+
         return experiment
 
     @staticmethod
