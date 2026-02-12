@@ -29,7 +29,7 @@ logger.setLevel(logging.WARNING)
 @dataclass
 class StageConfig:
     model: str
-    temp: float
+    temp: float | None
 
 
 @dataclass
