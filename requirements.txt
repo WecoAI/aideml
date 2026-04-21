@@ -1,5 +1,5 @@
 # AIDE requirements
-black==24.3.0
+black~=26.3.1
 funcy==2.0
 humanize==4.8.0
 jsonschema==4.19.2
@@ -7,7 +7,7 @@ numpy==1.26.2
 openai>=1.69.0
 anthropic>=0.20.0
 pandas==2.1.4
-pytest==7.4.3
+pytest~=9.0.3
 requests>=2.32.4
 scikit-learn==1.5.0
 rich==13.7.0
@@ -90,5 +90,5 @@ pyocr
 pyarrow
 xlrd
 backoff
-streamlit==1.40.2
+streamlit~=1.54.0
 python-dotenv
