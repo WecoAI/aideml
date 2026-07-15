@@ -16,6 +16,25 @@ logger = logging.getLogger("aide")
 
 ExecCallbackType = Callable[[str, bool], ExecutionResult]
 
+plan_code_func_spec = FunctionSpec(
+    name="submit_plan_and_code",
+    json_schema={
+        "type": "object",
+        "properties": {
+            "plan": {
+                "type": "string",
+                "description": "A brief natural-language plan or solution sketch.",
+            },
+            "code": {
+                "type": "string",
+                "description": "A complete single-file Python implementation.",
+            },
+        },
+        "required": ["plan", "code"],
+    },
+    description="Submit a short plan together with the full Python implementation.",
+)
+
 review_func_spec = FunctionSpec(
     name="submit_review",
     json_schema={
@@ -151,9 +170,32 @@ class Agent:
         }
 
     def plan_and_code_query(self, prompt, retries=3) -> tuple[str, str]:
-        """Generate a natural language plan + code in the same LLM call and split them apart."""
+        """Generate a natural language plan + code in the same LLM call."""
         completion_text = None
         for _ in range(retries):
+            try:
+                structured_response = cast(
+                    dict,
+                    query(
+                        system_message=prompt,
+                        user_message=None,
+                        model=self.acfg.code.model,
+                        temperature=self.acfg.code.temp,
+                        func_spec=plan_code_func_spec,
+                    ),
+                )
+            except Exception:
+                structured_response = None
+
+            if isinstance(structured_response, dict):
+                plan = structured_response.get("plan", "").strip()
+                code = extract_code(structured_response.get("code", ""))
+                if plan and code:
+                    return plan, code
+                logger.warning(
+                    "Structured plan+code response missing plan or valid code, falling back to text extraction."
+                )
+
             completion_text = query(
                 system_message=prompt,
                 user_message=None,
@@ -165,7 +207,6 @@ class Agent:
             nl_text = extract_text_up_to_code(completion_text)
 
             if code and nl_text:
-                # merge all code blocks into a single string
                 return nl_text, code
 
             print("Plan + code extraction failed, retrying...")
