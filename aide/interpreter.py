@@ -173,7 +173,7 @@ class Interpreter:
             os.remove(self.agent_file_name)
 
             # put EOF marker to indicate that we're done
-            result_outq.put("<|EOF|>")
+            result_outq.put(None)
 
     def create_process(self) -> None:
         # we use three queues to communicate with the child process:
@@ -296,17 +296,18 @@ class Interpreter:
         # waiting until the queue is empty is not enough since
         # the feeder thread in child might still be adding to the queue
         start_collect = time.time()
-        while not self.result_outq.empty() or not output or output[-1] != "<|EOF|>":
+        while True:
             try:
                 # Add 5-second timeout for output collection
                 if time.time() - start_collect > 5:
                     logger.warning("Output collection timed out")
                     break
-                output.append(self.result_outq.get(timeout=1))
+                message = self.result_outq.get(timeout=1)
             except queue.Empty:
                 continue
-        if output and output[-1] == "<|EOF|>":
-            output.pop()  # remove the EOF marker
+            if message is None:
+                break
+            output.append(message)
 
         e_cls_name, exc_info, exc_stack = state[1:]
 
