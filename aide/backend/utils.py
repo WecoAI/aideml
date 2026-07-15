@@ -4,6 +4,7 @@ import jsonschema
 from dataclasses_json import DataClassJsonMixin
 import backoff
 import logging
+import os
 from typing import Callable
 
 PromptType = str | dict | list
@@ -13,11 +14,17 @@ OutputType = str | FunctionCallType
 
 logger = logging.getLogger("aide")
 
+# Bound the retry loop. on_predicate with no max_tries retries forever, so a
+# persistent failure (bad key, dead endpoint, model without tool support) hangs
+# the run silently instead of raising.
+BACKOFF_MAX_TRIES = int(os.getenv("AIDE_BACKOFF_MAX_TRIES", "6"))
+
 
 @backoff.on_predicate(
     wait_gen=backoff.expo,
     max_value=60,
     factor=1.5,
+    max_tries=BACKOFF_MAX_TRIES,
 )
 def backoff_create(
     create_fn: Callable, retry_exceptions: list[Exception], *args, **kwargs

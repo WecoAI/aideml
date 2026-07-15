@@ -13,6 +13,9 @@ import openai
 logger = logging.getLogger("aide")
 
 OPENAI_BASE_URL = "https://api.openai.com/v1"
+# Per-request timeout (seconds). The SDK default is 600s, which combined with the
+# retry loop in backend.utils makes a stuck request look like a hang.
+OPENAI_REQUEST_TIMEOUT = float(os.getenv("AIDE_OPENAI_TIMEOUT", "180"))
 
 _client: openai.OpenAI = None  # type: ignore
 _custom_client: openai.OpenAI = None  # type: ignore
@@ -30,7 +33,15 @@ def _setup_openai_client():
     global _client
     # Use real OpenAI API with proper API key, explicitly override base_url
     api_key = os.getenv("OPENAI_API_KEY")
-    _client = openai.OpenAI(api_key=api_key, base_url=OPENAI_BASE_URL, max_retries=0)
+    # Cap the per-request wait. Without an explicit timeout the SDK default (600s)
+    # applies, and because backoff_create() retries indefinitely, a single stuck
+    # request stalls the whole run with nothing surfaced to the user.
+    _client = openai.OpenAI(
+        api_key=api_key,
+        base_url=OPENAI_BASE_URL,
+        max_retries=0,
+        timeout=OPENAI_REQUEST_TIMEOUT,
+    )
 
 
 @once
@@ -41,7 +52,10 @@ def _setup_custom_client():
     api_key = os.getenv("OPENAI_API_KEY")
     if base_url:
         _custom_client = openai.OpenAI(
-            api_key=api_key, base_url=base_url, max_retries=0
+            api_key=api_key,
+            base_url=base_url,
+            max_retries=0,
+            timeout=OPENAI_REQUEST_TIMEOUT,
         )
 
 
