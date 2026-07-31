@@ -1,0 +1,136 @@
+version: 1.1
+kind: component
+name: aide-analyzer-sft
+description: >
+  Unified-analyzer SFT on axia/default using a prebuilt dataset on local scratch
+  (/scratch/aide_rl/analyzer/sft.jsonl from aide-analyzer-data-prep). Fine-tunes
+  a base model with OpenRLHF/DeepSpeed (default Qwen3.5-9B, 2 GPUs), then
+  uploads the HF-format checkpoint to a public model repo. Requires HF_TOKEN
+  with write scope; WANDB_API_KEY is optional. Run the data-prep job first.
+
+queue: axia/default
+
+inputs:
+  - name: model_id
+    description: Base HF model to fine-tune.
+    type: str
+    isOptional: true
+    value: Qwen/Qwen3.5-9B
+
+  - name: num_gpus
+    description: GPUs to request and pass to DeepSpeed (--num-gpus).
+    type: int
+    isOptional: true
+    value: 2
+
+  - name: scratch_root
+    description: Local scratch root with prebuilt analyzer/sft.jsonl.
+    type: str
+    isOptional: true
+    value: /scratch/aide_rl
+
+  - name: hf_model_repo
+    description: Public HF model repo to create/update with the SFT checkpoint.
+    type: str
+    isOptional: true
+    value: guilhermedrud/aide-analyzer-sft-qwen3.5-9b
+
+  - name: max_epochs
+    description: SFT epochs.
+    type: int
+    isOptional: true
+    value: 1
+
+  - name: max_len
+    description: Max sequence length for SFT (2048 keeps H200 memory safe).
+    type: int
+    isOptional: true
+    value: 2048
+
+  - name: micro_batch_size
+    description: >
+      Per-GPU micro batch. Keep small with long contexts (mbs=4 + max_len=8192
+      OOMed on H200).
+    type: int
+    isOptional: true
+    value: 2
+
+  - name: batch_size
+    description: Global batch size (must be a multiple of micro_batch_size * num_gpus).
+    type: int
+    isOptional: true
+    value: 4
+
+cache:
+  disable: true
+
+termination:
+  maxRetries: 0
+
+run:
+  kind: job
+  connections:
+    - local-scratch
+
+  # NOTE: do NOT add a /dev/shm volume here — the Polyaxon agent on axia
+  # already injects one, and a duplicate mountPath makes the k8s API reject
+  # the job (422 FieldValueDuplicate).
+
+  container:
+    # Prebaked OpenRLHF + vLLM image (docker/openrlhf/Dockerfile).
+    image: "guilhermedrud/aide-openrlhf:0.1"
+
+    workingDir: "{{ globals.artifacts_path }}/{{ globals.uuid }}/uploads"
+
+    resources:
+      requests:
+        cpu: "16"
+        memory: "128Gi"
+        nvidia.com/gpu: "{{ num_gpus }}"
+      limits:
+        cpu: "16"
+        memory: "128Gi"
+        nvidia.com/gpu: "{{ num_gpus }}"
+
+    env:
+      - name: PYTHONUNBUFFERED
+        value: "1"
+      - name: DATA_SOURCE
+        value: "scratch"
+      - name: MODEL_ID
+        value: "{{ model_id }}"
+      - name: NUM_GPUS
+        value: "{{ num_gpus }}"
+      - name: SCRATCH_ROOT
+        value: "{{ scratch_root }}"
+      - name: HF_MODEL_REPO
+        value: "{{ hf_model_repo }}"
+      - name: MAX_EPOCHS
+        value: "{{ max_epochs }}"
+      - name: MAX_LEN
+        value: "{{ max_len }}"
+      - name: MBS
+        value: "{{ micro_batch_size }}"
+      - name: BS
+        value: "{{ batch_size }}"
+      - name: WORK_DIR
+        value: "{{ globals.run_outputs_path }}/analyzer_sft"
+      - name: HF_HOME
+        value: "{{ scratch_root }}/hf_cache"
+      - name: HF_TOKEN
+        value: "{{ globals.hf_token }}"
+      - name: PYTORCH_CUDA_ALLOC_CONF
+        value: "expandable_segments:True"
+      - name: TEAM_WANDB
+        value: "franciscokunumi-universidade-federal-de-minas-gerais"
+      #- name: WANDB_PROJECT
+      #  value: "aide-analyzer-sft-qwen3.5-9b"
+      #- name: WANDB_API_KEY
+      # Set on the Polyaxon project:
+      #   HF_TOKEN       - download base model + write finetuned (write scope)
+      #   WANDB_API_KEY  - optional; training proceeds without wandb if unset
+
+    # Invoke via `bash script.sh`: the upload does not preserve the exec bit.
+    command:
+      - bash
+      - scripts/openrlhf/train_analyzer_sft_e2e.sh

@@ -21,21 +21,28 @@ load_dotenv()
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Upload AIDE model checkpoint to Hugging Face.")
     p.add_argument(
+        "--local_dir",
         "--model_dir",
+        dest="local_dir",
         type=str,
-        default="checkpoints/aide_hint_controller_dpo",
-        help="Local checkpoint directory (config.json + model.safetensors, etc.).",
+        default="checkpoints/aide_analyzer_sft",
+        help="Local checkpoint directory (config.json + weights).",
     )
     p.add_argument(
         "--repo_id",
         type=str,
-        default="guilhermedrud/aide_rl_dpo",
+        default="guilhermedrud/aide-analyzer-sft-qwen3.5-9b",
         help="Target Hugging Face model repo id.",
+    )
+    p.add_argument(
+        "--private",
+        action="store_true",
+        help="Create/keep the model repo private (default: public).",
     )
     p.add_argument(
         "--public",
         action="store_true",
-        help="Make the model repo public (default: private).",
+        help="Deprecated alias: force public upload (already the default).",
     )
     p.add_argument("--revision", type=str, default="main")
     return p.parse_args()
@@ -43,13 +50,16 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    model_dir = Path(args.model_dir)
+    model_dir = Path(args.local_dir)
+    if not model_dir.is_dir():
+        raise SystemExit(f"Not a directory: {model_dir}")
     if not (model_dir / "config.json").is_file():
         raise SystemExit(f"Missing config.json under {model_dir}")
+    private = bool(args.private) and not bool(args.public)
     uri = upload_model_dir(
         model_dir,
         args.repo_id,
-        private=not args.public,
+        private=private,
         revision=args.revision,
     )
     print(f"Model uploaded: {uri}")

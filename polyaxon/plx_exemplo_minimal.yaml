@@ -2,7 +2,7 @@ version: 1.1
 kind: component
 name: hello-polyaxon
 description: Exemplo mínimo para entender a estrutura básica de um YAML do Polyaxon.
-queue: axia/default
+queue: nebius/default
 
 # inputs: parâmetros que você pode passar ao rodar o job.
 # Podem ser obrigatórios (sem isOptional) ou opcionais (com isOptional: true e um value padrão).

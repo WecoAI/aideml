@@ -11,6 +11,7 @@ HF_DATA_PREFIX = "data"
 HF_RUNS_PREFIX = "runs"
 HF_KAGGLE_PREFIX = "kaggle"
 HF_EVAL_PREFIX = "eval"
+HF_RELBENCH_PREFIX = "relbench"
 
 
 def _token(token: str | None = None) -> str | None:
@@ -111,6 +112,68 @@ def upload_kaggle_task_data(
         revision=revision,
         token=token,
     )
+
+
+def upload_relbench_task_data(
+    input_dir: str | Path,
+    task_id: str,
+    *,
+    repo_id: str = HF_REPO,
+    revision: str = "main",
+    token: str | None = None,
+) -> str:
+    """Upload materialized RelBench tables for one task to relbench/<task_id>/."""
+    return upload_folder_to_hf(
+        input_dir,
+        repo_id=repo_id,
+        path_in_repo=_repo_path(HF_RELBENCH_PREFIX, task_id),
+        revision=revision,
+        token=token,
+    )
+
+
+def relbench_task_exists_on_hf(
+    task_id: str,
+    repo_files: frozenset[str] | None = None,
+    *,
+    repo_id: str = HF_REPO,
+    revision: str = "main",
+    token: str | None = None,
+) -> bool:
+    """True if relbench/<task_id>/train.parquet exists on the HF dataset repo."""
+    marker = _repo_path(HF_RELBENCH_PREFIX, task_id, "train.parquet")
+    if repo_files is not None:
+        return marker in repo_files
+    api = _api(token)
+    return api.file_exists(
+        repo_id=repo_id,
+        filename=marker,
+        repo_type="dataset",
+        revision=revision,
+    )
+
+
+def list_uploaded_relbench_tasks(
+    repo_files: frozenset[str] | None = None,
+    *,
+    repo_id: str = HF_REPO,
+    revision: str = "main",
+    token: str | None = None,
+) -> set[str]:
+    """Return RelBench task ids that already have train.parquet on HF."""
+    if repo_files is None:
+        repo_files = list_repo_files_cached(
+            repo_id=repo_id, revision=revision, token=token
+        )
+    prefix = f"{HF_RELBENCH_PREFIX}/"
+    suffix = "/train.parquet"
+    out: set[str] = set()
+    for path in repo_files:
+        if path.startswith(prefix) and path.endswith(suffix):
+            task_id = path[len(prefix) : -len(suffix)]
+            if task_id and "/" not in task_id:
+                out.add(task_id)
+    return out
 
 
 def kaggle_task_exists_on_hf(
@@ -317,6 +380,54 @@ def download_kaggle_task_data(
         return dest_input_dir
 
     remote_prefix = _repo_path(HF_KAGGLE_PREFIX, dataset_name)
+    api = _api(token)
+    repo_files = api.list_repo_files(repo_id=repo_id, repo_type="dataset", revision=revision)
+    task_files = [f for f in repo_files if f.startswith(f"{remote_prefix}/")]
+    if not task_files:
+        raise FileNotFoundError(
+            f"No files under {remote_prefix}/ in {repo_id} (revision={revision})"
+        )
+
+    for remote_path in task_files:
+        rel = remote_path[len(remote_prefix) + 1 :]
+        if not rel:
+            continue
+        local_path = dest_input_dir / rel
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+        cached = hf_hub_download(
+            repo_id=repo_id,
+            filename=remote_path,
+            repo_type="dataset",
+            revision=revision,
+            token=_token(token),
+        )
+        shutil.copy2(cached, local_path)
+
+    print(f"Downloaded hf://{repo_id}/{remote_prefix}/ -> {dest_input_dir}")
+    return dest_input_dir
+
+
+def download_relbench_task_data(
+    task_id: str,
+    dest_input_dir: str | Path,
+    *,
+    repo_id: str = HF_REPO,
+    revision: str = "main",
+    token: str | None = None,
+) -> Path:
+    """
+    Download relbench/<task_id>/ from HF into dest_input_dir
+    (train/val/test + db_tables + task_info.json).
+    Skips download if train.parquet already exists.
+    """
+    from huggingface_hub import hf_hub_download
+
+    dest_input_dir = Path(dest_input_dir)
+    dest_input_dir.mkdir(parents=True, exist_ok=True)
+    if (dest_input_dir / "train.parquet").is_file():
+        return dest_input_dir
+
+    remote_prefix = _repo_path(HF_RELBENCH_PREFIX, task_id)
     api = _api(token)
     repo_files = api.list_repo_files(repo_id=repo_id, repo_type="dataset", revision=revision)
     task_files = [f for f in repo_files if f.startswith(f"{remote_prefix}/")]

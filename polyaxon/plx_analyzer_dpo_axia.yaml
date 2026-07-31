@@ -1,0 +1,127 @@
+version: 1.1
+kind: component
+name: aide-analyzer-dpo
+description: >
+  Unified-analyzer DPO on axia/default using scratch preferences
+  (/scratch/aide_rl/analyzer/preferences.jsonl from aide-analyzer-data-prep)
+  and the analyzer SFT checkpoint as the base model
+  (guilhermedrud/aide-analyzer-sft-qwen3.5-9b). Uses OpenRLHF/DeepSpeed on 4
+  GPUs, then uploads the HF-format checkpoint to a public model repo. Requires
+  HF_TOKEN with write scope; WANDB_API_KEY is optional. Run the data-prep (and
+  SFT) jobs first.
+
+queue: axia/default
+
+inputs:
+  - name: model_id
+    description: Analyzer SFT checkpoint to start DPO from (HF repo id or local path).
+    type: str
+    isOptional: true
+    value: guilhermedrud/aide-analyzer-sft-qwen3.5-9b
+
+  - name: num_gpus
+    description: GPUs to request and pass to DeepSpeed (--num-gpus). DPO is heavier than SFT.
+    type: int
+    isOptional: true
+    value: 4
+
+  - name: scratch_root
+    description: Local scratch root with prebuilt analyzer/preferences.jsonl.
+    type: str
+    isOptional: true
+    value: /scratch/aide_rl
+
+  - name: hf_model_repo
+    description: Public HF model repo to create/update with the DPO checkpoint.
+    type: str
+    isOptional: true
+    value: guilhermedrud/aide-analyzer-dpo-qwen3.5-9b
+
+  - name: max_epochs
+    description: DPO epochs.
+    type: int
+    isOptional: true
+    value: 1
+
+  - name: max_len
+    description: Max sequence length for DPO (2048 keeps H200 memory safer).
+    type: int
+    isOptional: true
+    value: 2048
+
+  - name: micro_batch_size
+    description: Per-GPU micro batch (keep small; DPO holds chosen+rejected+ref).
+    type: int
+    isOptional: true
+    value: 1
+
+  - name: batch_size
+    description: Global batch size (must be a multiple of micro_batch_size * num_gpus).
+    type: int
+    isOptional: true
+    value: 8
+
+cache:
+  disable: true
+
+termination:
+  maxRetries: 0
+
+run:
+  kind: job
+  connections:
+    - local-scratch
+
+  # NOTE: do NOT add a /dev/shm volume here — the Polyaxon agent on axia
+  # already injects one, and a duplicate mountPath makes the k8s API reject
+  # the job (422 FieldValueDuplicate).
+
+  container:
+    image: "guilhermedrud/aide-openrlhf:0.1"
+
+    workingDir: "{{ globals.artifacts_path }}/{{ globals.uuid }}/uploads"
+
+    resources:
+      requests:
+        cpu: "32"
+        memory: "256Gi"
+        nvidia.com/gpu: "{{ num_gpus }}"
+      limits:
+        cpu: "32"
+        memory: "256Gi"
+        nvidia.com/gpu: "{{ num_gpus }}"
+
+    env:
+      - name: PYTHONUNBUFFERED
+        value: "1"
+      - name: MODEL_ID
+        value: "{{ model_id }}"
+      - name: NUM_GPUS
+        value: "{{ num_gpus }}"
+      - name: SCRATCH_ROOT
+        value: "{{ scratch_root }}"
+      - name: HF_MODEL_REPO
+        value: "{{ hf_model_repo }}"
+      - name: MAX_EPOCHS
+        value: "{{ max_epochs }}"
+      - name: MAX_LEN
+        value: "{{ max_len }}"
+      - name: MBS
+        value: "{{ micro_batch_size }}"
+      - name: BS
+        value: "{{ batch_size }}"
+      - name: WORK_DIR
+        value: "{{ globals.run_outputs_path }}/analyzer_dpo"
+      - name: HF_HOME
+        value: "{{ scratch_root }}/hf_cache"
+      - name: PYTORCH_CUDA_ALLOC_CONF
+        value: "expandable_segments:True"
+      - name: HF_TOKEN
+        value: "{{ globals.hf_token }}"
+      # Set on the Polyaxon project (do not commit tokens into this YAML):
+      #   HF_TOKEN       - download SFT base + write DPO model (write scope)
+      #   WANDB_API_KEY  - optional; training proceeds without wandb if unset
+
+    command:
+      - bash
+      - scripts/openrlhf/train_analyzer_dpo_e2e.sh

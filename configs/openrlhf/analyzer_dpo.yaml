@@ -1,0 +1,42 @@
+# DPO for the unified analyzer preference pairs.
+# Usage: CONFIG=configs/openrlhf/analyzer_dpo.yaml ./scripts/openrlhf/train_hint_dpo.sh
+#
+# Base model should be the analyzer SFT checkpoint (local path or HF repo id).
+
+model:
+  model_name_or_path: guilhermedrud/aide-analyzer-sft-qwen3.5-9b
+  beta: 0.1
+  gradient_checkpointing_enable: true
+
+data:
+  dataset: data/heuristic_runs/analyzer/preferences.jsonl
+  prompt_key: prompt
+  chosen_key: chosen
+  rejected_key: rejected
+  apply_chat_template: true
+  # Keep 2048 for H200 memory headroom (DPO holds chosen+rejected+ref).
+  max_len: 2048
+
+train:
+  max_epochs: 1
+  # With 4 GPUs and mbs=1, global batch must be a multiple of 4.
+  batch_size: 8
+  micro_batch_size: 1
+
+adam:
+  lr: 5.0e-7
+
+ckpt:
+  output_dir: checkpoints/aide_analyzer_dpo
+  save_hf: true
+
+ds:
+  zero_stage: 3
+  param_dtype: bf16
+
+logger:
+  logging_steps: 1
+  wandb:
+    key: true
+    project: aide_rl
+    run_name: analyzer_dpo

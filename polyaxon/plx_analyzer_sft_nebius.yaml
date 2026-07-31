@@ -1,0 +1,145 @@
+version: 1.1
+kind: component
+name: aide-analyzer-sft-nebius
+description: >
+  Unified-analyzer SFT on nebius/default (H200). No local scratch: each run
+  downloads AIDE journals from Hugging Face, exports the analyzer SFT dataset,
+  fine-tunes a base model with OpenRLHF/DeepSpeed (default Qwen3.5-9B, 1 GPU on
+  the h200 node group), then uploads the HF-format checkpoint to a public model
+  repo. Requires HF_TOKEN with write scope; WANDB_API_KEY is optional.
+
+queue: nebius/default
+
+inputs:
+  - name: model_id
+    description: Base HF model to fine-tune.
+    type: str
+    isOptional: true
+    value: Qwen/Qwen3.5-4B
+
+  - name: num_gpus
+    description: >
+      GPUs for DeepSpeed. Nebius h200 nodes have 1x H200; keep at 1 unless you
+      change nodeSelector to a multi-GPU group (e.g. b200).
+    type: int
+    isOptional: true
+    value: 1
+
+  - name: hf_dataset_repo
+    description: HF dataset repo with AIDE journals under runs/.
+    type: str
+    isOptional: true
+    value: guilhermedrud/ctu_datasets
+
+  - name: hf_model_repo
+    description: Public HF model repo to create/update with the SFT checkpoint.
+    type: str
+    isOptional: true
+    value: guilhermedrud/aide-analyzer-sft-qwen3.5-9b
+
+  - name: max_epochs
+    description: SFT epochs.
+    type: int
+    isOptional: true
+    value: 1
+
+  - name: max_len
+    description: Max sequence length for SFT (2048 keeps H200 memory safe).
+    type: int
+    isOptional: true
+    value: 2048
+
+  - name: micro_batch_size
+    description: Per-GPU micro batch (keep small for long contexts).
+    type: int
+    isOptional: true
+    value: 4
+
+  - name: batch_size
+    description: Global batch size (must be a multiple of micro_batch_size * num_gpus).
+    type: int
+    isOptional: true
+    value: 16
+
+  - name: holdout_datasets
+    description: >
+      Space-separated dataset name prefixes routed to sft_val.jsonl
+      (empty = no holdout).
+    type: str
+    isOptional: true
+    value: ""
+
+  - name: wandb_project
+    description: W&B project name (used when WANDB_API_KEY / wandb-connection is set).
+    type: str
+    isOptional: true
+    value: aide_rl
+
+cache:
+  disable: true
+
+termination:
+  maxRetries: 0
+
+run:
+  kind: job
+
+  connections:
+    - wandb-connection
+
+  container:
+    # Prebaked OpenRLHF image on Docker Hub (public).
+    image: "guilhermedrud/aide-openrlhf:0.1"
+
+    workingDir: "{{ globals.run_artifacts_path }}/uploads"
+
+    resources:
+      requests:
+        nvidia.com/gpu: "{{ num_gpus }}"
+      limits:
+        nvidia.com/gpu: "{{ num_gpus }}"
+
+    env:
+      - name: PYTHONUNBUFFERED
+        value: "1"
+      - name: DATA_SOURCE
+        value: "download"
+      - name: MODEL_ID
+        value: "{{ model_id }}"
+      - name: NUM_GPUS
+        value: "{{ num_gpus }}"
+      - name: HF_DATASET_REPO
+        value: "{{ hf_dataset_repo }}"
+      - name: HF_MODEL_REPO
+        value: "{{ hf_model_repo }}"
+      - name: MAX_EPOCHS
+        value: "{{ max_epochs }}"
+      - name: MAX_LEN
+        value: "{{ max_len }}"
+      - name: MBS
+        value: "{{ micro_batch_size }}"
+      - name: BS
+        value: "{{ batch_size }}"
+      - name: HOLDOUT_DATASETS
+        value: "{{ holdout_datasets }}"
+      - name: WANDB_PROJECT
+        value: "{{ wandb_project }}"
+      - name: WANDB_API_KEY
+        value: "{{ globals.wandb_api_key }}"
+      - name: TEAM_WANDB
+        value: "franciscokunumi-universidade-federal-de-minas-gerais"
+      - name: WORK_DIR
+        value: "{{ globals.run_outputs_path }}/analyzer_sft"
+      - name: HF_HOME
+        value: "{{ globals.run_outputs_path }}/hf_cache"
+      - name: PYTORCH_CUDA_ALLOC_CONF
+        value: "expandable_segments:True"
+      - name: HF_TOKEN
+        value: "{{ globals.hf_token }}"
+      # Set on the Polyaxon project:
+      #   HF_TOKEN       - download journals/base model + write finetuned
+      #   WANDB_API_KEY  - optional (wandb-connection may also inject creds)
+
+    command:
+      - bash
+      - scripts/openrlhf/train_analyzer_sft_e2e.sh

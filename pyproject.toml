@@ -5,9 +5,17 @@ description = "AIDE ML with RLHF search policy tooling"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "anthropic",
+    "backoff",
+    "black",
     "coolname",
     "dataclasses-json",
+    "funcy",
+    "genson",
     "humanize",
+    "igraph",
+    "ipython",
+    "jsonschema",
     "numpy",
     "omegaconf",
     "openai",

@@ -31,6 +31,7 @@ from aide.policy import (
     HeuristicPolicy,
     HeuristicPlusControllerPolicy,
     SearchPolicy,
+    UnifiedControllerPolicy,
 )
 from aide.rlhf.ctu_dataset import (
     build_aide_inputs,
@@ -125,7 +126,7 @@ def parse_args() -> argparse.Namespace:
         "--controller_kind",
         type=str,
         default="none",
-        choices=["none", "llm", "random"],
+        choices=["none", "llm", "random", "unified"],
         help="Hint controller kind (use with heuristic for heuristic_plus_controller).",
     )
     p.add_argument("--controller_model", type=str, default=None)
@@ -136,6 +137,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def _build_policy(policy_kind: str, controller_kind: str) -> SearchPolicy:
+    if controller_kind == "unified":
+        return UnifiedControllerPolicy()
     if policy_kind == "controller":
         return ControllerPolicy()
     if policy_kind == "heuristic" and controller_kind != "none":

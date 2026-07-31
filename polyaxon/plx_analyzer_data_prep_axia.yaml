@@ -1,0 +1,83 @@
+version: 1.1
+kind: component
+name: aide-analyzer-data-prep
+description: >
+  CPU-only job: download AIDE journals from Hugging Face and export the
+  unified-analyzer SFT dataset onto the axia node local scratch at
+  /scratch/aide_rl/{journals,analyzer}/. Run this once (or when journals
+  change); training jobs then read the prebuilt sft.jsonl from scratch.
+  Requires HF_TOKEN on the Polyaxon project (recommended for rate limits).
+
+queue: axia/default
+
+inputs:
+  - name: hf_dataset_repo
+    description: HF dataset repo with AIDE journals under runs/.
+    type: str
+    isOptional: true
+    value: guilhermedrud/ctu_datasets
+
+  - name: scratch_root
+    description: Local scratch root on the axia node (local-scratch connection).
+    type: str
+    isOptional: true
+    value: /scratch/aide_rl
+
+  - name: holdout_datasets
+    description: >
+      Space-separated dataset name prefixes routed to sft_val.jsonl
+      (empty = no holdout).
+    type: str
+    isOptional: true
+    value: ""
+
+  - name: force_redownload
+    description: If 1, re-download journals even when already present on scratch.
+    type: str
+    isOptional: true
+    value: "0"
+
+cache:
+  disable: true
+
+termination:
+  maxRetries: 0
+
+run:
+  kind: job
+  connections:
+    - local-scratch
+
+  container:
+    # Same prebaked image as training (has huggingface_hub + aide deps);
+    # no GPU requested.
+    image: "guilhermedrud/aide-openrlhf:0.1"
+
+    workingDir: "{{ globals.artifacts_path }}/{{ globals.uuid }}/uploads"
+
+    resources:
+      requests:
+        cpu: "8"
+        memory: "32Gi"
+      limits:
+        cpu: "16"
+        memory: "64Gi"
+
+    env:
+      - name: PYTHONUNBUFFERED
+        value: "1"
+      - name: HF_DATASET_REPO
+        value: "{{ hf_dataset_repo }}"
+      - name: SCRATCH_ROOT
+        value: "{{ scratch_root }}"
+      - name: HOLDOUT_DATASETS
+        value: "{{ holdout_datasets }}"
+      - name: FORCE_REDOWNLOAD
+        value: "{{ force_redownload }}"
+      - name: HF_HOME
+        value: "{{ scratch_root }}/hf_cache"
+      # Set HF_TOKEN on the Polyaxon project for authenticated HF downloads.
+
+    command:
+      - bash
+      - scripts/openrlhf/prep_analyzer_data_scratch.sh

@@ -1,0 +1,38 @@
+# SFT for the unified analyzer (review + action + hint JSON).
+# Same trainer as hint_sft; only dataset and run names differ.
+# Usage: CONFIG=configs/openrlhf/analyzer_sft.yaml ./scripts/openrlhf/train_hint_sft.sh
+
+model:
+  model_name_or_path: Qwen/Qwen3.5-9B
+  gradient_checkpointing_enable: true
+
+data:
+  dataset: data/heuristic_runs/analyzer/sft.jsonl
+  input_key: messages
+  apply_chat_template: true
+  max_len: 2048
+
+train:
+  max_epochs: 1
+  # H200 OOM with mbs=4 + max_len=8192 (~106 GiB used, failed allocating ~11 GiB).
+  # Prefer mbs=1; override via MBS/BS env on the Polyaxon training job.
+  batch_size: 8
+  micro_batch_size: 1
+
+adam:
+  lr: 2.0e-5
+
+ckpt:
+  output_dir: checkpoints/aide_analyzer_sft
+  save_hf: true
+
+ds:
+  zero_stage: 3
+  param_dtype: bf16
+
+logger:
+  logging_steps: 1
+  wandb:
+    key: true
+    project: aide_rl
+    run_name: analyzer_sft

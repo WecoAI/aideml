@@ -58,6 +58,7 @@ from aide.policy import (
     HeuristicPolicy,
     HeuristicPlusControllerPolicy,
     SearchPolicy,
+    UnifiedControllerPolicy,
 )
 from aide.utils.config import _load_cfg, load_task_desc, prep_agent_workspace, prep_cfg, save_run
 
@@ -128,7 +129,13 @@ def parse_args() -> argparse.Namespace:
         help="OpenAI-compatible base URL for controller (default: CONTROLLER_OPENAI_BASE_URL env).",
     )
     p.add_argument("--policy_kind", type=str, default="heuristic", choices=["heuristic", "controller", "llm"])
-    p.add_argument("--controller_kind", type=str, default="none", choices=["none", "llm", "random"])
+    p.add_argument(
+        "--controller_kind",
+        type=str,
+        default="none",
+        choices=["none", "llm", "random", "unified"],
+        help="'unified': trained model replaces the GPT review and drives tree expansion.",
+    )
     p.add_argument("--controller_model", type=str, default=None)
     p.add_argument("--controller_temp", type=float, default=0.7)
     p.add_argument("--hint_max_chars", type=int, default=600)
@@ -143,6 +150,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def _build_policy(policy_kind: str, controller_kind: str) -> SearchPolicy:
+    if controller_kind == "unified":
+        return UnifiedControllerPolicy()
     if policy_kind == "controller":
         return ControllerPolicy()
     if policy_kind == "heuristic" and controller_kind != "none":
@@ -179,7 +188,10 @@ def _resolve_seeds(args: argparse.Namespace) -> list[int]:
     return list(range(args.seeds))
 
 
-def _materialize_task(task: EvalTask, mat_dir: Path, args: argparse.Namespace) -> dict[str, str]:
+def _materialize_task(
+    task: EvalTask, mat_dir: Path, args: argparse.Namespace
+) -> tuple[dict[str, str], dict[str, str]]:
+    """Return (aide_inputs, task_metadata for the hint controller prompt)."""
     if task.benchmark == "relbench":
         assert task.relbench_dataset and task.relbench_task
         input_dir = materialize_relbench_native(
@@ -189,7 +201,14 @@ def _materialize_task(task: EvalTask, mat_dir: Path, args: argparse.Namespace) -
             download=args.relbench_download,
         )
         task_info = load_relbench_task_info(input_dir)
-        return build_relbench_inputs(task_info, primary_metric=task.metric)
+        metadata = {
+            "task_type": str(task_info.get("task_type", "")),
+            "target_column": str(task_info.get("target_col", "")),
+            "target_table": str(task_info.get("entity_table", "")),
+            "dataset_name": str(task_info.get("dataset", "")),
+            "task_name": str(task_info.get("task", "")),
+        }
+        return build_relbench_inputs(task_info, primary_metric=task.metric), metadata
     assert task.mlebench_competition_id
     input_dir = materialize_mlebench(
         task.mlebench_competition_id,
@@ -198,7 +217,11 @@ def _materialize_task(task: EvalTask, mat_dir: Path, args: argparse.Namespace) -
     )
     task_info = load_mlebench_task_info(input_dir)
     description = (input_dir / "description.md").read_text()
-    return build_mlebench_inputs(task_info, description)
+    metadata = {
+        "dataset_name": task.mlebench_competition_id,
+        "task_name": task.mlebench_competition_id,
+    }
+    return build_mlebench_inputs(task_info, description), metadata
 
 
 def _grade_task(
@@ -270,7 +293,7 @@ def run_one(task: EvalTask, seed: int, args: argparse.Namespace) -> dict:
     random.seed(seed)
     safe = _safe_dirname(task.id)
     mat_dir = Path(args.materialize_root) / safe
-    aide_inputs = _materialize_task(task, mat_dir, args)
+    aide_inputs, task_metadata = _materialize_task(task, mat_dir, args)
 
     controller_base_url = args.controller_base_url or os.getenv("CONTROLLER_OPENAI_BASE_URL")
 
@@ -288,6 +311,7 @@ def run_one(task: EvalTask, seed: int, args: argparse.Namespace) -> dict:
     _cfg.agent.search.controller_temp = args.controller_temp
     _cfg.agent.search.controller_base_url = controller_base_url
     _cfg.agent.search.hint_max_chars = args.hint_max_chars
+    _cfg.agent.search.task_metadata = {k: v for k, v in task_metadata.items() if v}
     if args.hint_pool_path:
         _cfg.agent.search.hint_pool_path = args.hint_pool_path
     if args.num_drafts is not None:
@@ -301,7 +325,7 @@ def run_one(task: EvalTask, seed: int, args: argparse.Namespace) -> dict:
         args.controller_model
         and (
             args.policy_kind == "controller"
-            or args.controller_kind in ("llm", "random")
+            or args.controller_kind in ("llm", "random", "unified")
         )
     )
     if uses_controller_llm:

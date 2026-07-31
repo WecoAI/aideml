@@ -11,15 +11,19 @@ BASE_RUN_NAME="$(python3 -c "import yaml; c=yaml.safe_load(open('${CONFIG}')); p
 WANDB_RUN_NAME="${WANDB_RUN_NAME:-${BASE_RUN_NAME}_$(date +%m%dT%H%M)}"
 
 # Optional env overrides (only applied when set).
-OVERRIDES=("logger.wandb.run_name=${WANDB_RUN_NAME}")
+OVERRIDES=()
 add_override() { if [[ -n "${2:-}" ]]; then OVERRIDES+=("$1=$2"); fi; }
+if [[ -n "${WANDB_API_KEY:-}" ]]; then
+  add_override logger.wandb.run_name "${WANDB_RUN_NAME}"
+  add_override logger.wandb.project "${WANDB_PROJECT:-}"
+  add_override logger.wandb.key "${WANDB_API_KEY}"
+fi
 add_override model.model_name_or_path "${PRETRAIN:-}"
 add_override ckpt.output_dir "${OUTPUT_DIR:-}"
+add_override data.dataset "${DATASET:-}"
 add_override train.max_epochs "${MAX_EPOCHS:-}"
 add_override adam.lr "${LR:-}"
 add_override data.max_len "${MAX_LEN:-}"
-add_override logger.wandb.project "${WANDB_PROJECT:-}"
-add_override logger.wandb.key "${WANDB_API_KEY:-}"
 add_override ds.gradient_checkpointing_enable "${GRADIENT_CHECKPOINTING_ENABLE:-}"
 add_override ds.zero_stage "${ZERO_STAGE:-}"
 
@@ -40,11 +44,19 @@ add_override train.batch_size "$EFF_BS"
 add_override train.micro_batch_size "$EFF_MBS"
 add_override model.gradient_checkpointing_enable
 
-mapfile -t CFG_ARGS < <(python3 scripts/openrlhf/_yaml_to_args.py "${CONFIG}" "${OVERRIDES[@]}")
+if ((${#OVERRIDES[@]})); then
+  mapfile -t CFG_ARGS < <(python3 scripts/openrlhf/_yaml_to_args.py "${CONFIG}" "${OVERRIDES[@]}")
+else
+  mapfile -t CFG_ARGS < <(python3 scripts/openrlhf/_yaml_to_args.py "${CONFIG}")
+fi
 
 echo "config: ${CONFIG}"
 echo "num GPUs: ${NUM_GPUS}"
-echo "wandb run name: ${WANDB_RUN_NAME}"
+if [[ -n "${WANDB_API_KEY:-}" ]]; then
+  echo "wandb run name: ${WANDB_RUN_NAME}"
+else
+  echo "wandb: disabled (WANDB_API_KEY unset)"
+fi
 
 
 deepspeed --num_gpus "${NUM_GPUS}" --module openrlhf.cli.train_sft "${CFG_ARGS[@]}"

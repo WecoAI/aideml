@@ -7,6 +7,7 @@ from .backend import FunctionSpec, query_with_usage
 from .interpreter import ExecutionResult
 from .journal import Journal, Node
 from .policy import HeuristicPolicy, SearchAction, SearchPolicy
+from .rlhf.observation import task_desc_to_string
 from .utils import data_preview
 from .utils.config import Config
 from .utils.metric import MetricValue, WorstMetricValue
@@ -60,12 +61,20 @@ class Agent:
         self.journal = journal
         self.data_preview: str | None = None
         self.policy = policy or HeuristicPolicy()
+        self._unified_analyzer = None
+        if (
+            self.acfg.search.controller_kind == "unified"
+            and self.acfg.search.controller_model
+        ):
+            from .controller import UnifiedAnalyzer
+
+            self._unified_analyzer = UnifiedAnalyzer()
 
     def search_policy(self) -> Node | None:
         """Backward-compatible wrapper around heuristic selection."""
         action = HeuristicPolicy().select(
             journal=self.journal,
-            task_desc=self.task_desc if isinstance(self.task_desc, str) else str(self.task_desc),
+            task_desc=task_desc_to_string(self.task_desc),
             search_cfg=self.acfg.search,
             step_idx=len(self.journal),
             total_steps=self.acfg.steps,
@@ -287,9 +296,11 @@ class Agent:
         if not self.journal.nodes or self.data_preview is None:
             self.update_data_preview()
 
+        # JSON string form matches the controller's training prompts (task_desc_to_string
+        # was also used at export time); str(dict) would produce a Python repr instead.
         action: SearchAction = self.policy.select(
             journal=self.journal,
-            task_desc=self.task_desc if isinstance(self.task_desc, str) else str(self.task_desc),
+            task_desc=task_desc_to_string(self.task_desc),
             search_cfg=self.acfg.search,
             step_idx=len(self.journal),
             total_steps=self.acfg.steps,
@@ -321,6 +332,34 @@ class Agent:
 
         node.absorb_exec_result(exec_result)
 
+        if self._unified_analyzer is not None:
+            if self._parse_exec_result_unified(node):
+                return
+            logger.warning(
+                "Unified analyzer failed for node %s; falling back to GPT review", node.id
+            )
+
+        self._parse_exec_result_gpt(node)
+
+    def _parse_exec_result_unified(self, node: Node) -> bool:
+        """Review + next-step suggestion in one trained-model call. Returns False on failure."""
+        out = self._unified_analyzer.analyze(node, self.task_desc, self.acfg.search)  # type: ignore[union-attr]
+        if out is None:
+            return False
+
+        node.analysis = out.analysis
+        node.is_buggy = out.is_bug or node.exc_type is not None or out.metric is None
+        if node.is_buggy:
+            node.metric = WorstMetricValue()
+        else:
+            node.metric = MetricValue(out.metric, maximize=not out.lower_is_better)
+
+        node.next_action = out.action
+        node.next_hint = out.hint or None
+        node.next_confidence = out.confidence
+        return True
+
+    def _parse_exec_result_gpt(self, node: Node):
         prompt = {
             "Introduction": (
                 "You are a Kaggle grandmaster attending a competition. "

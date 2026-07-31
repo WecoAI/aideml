@@ -48,9 +48,12 @@ class SearchConfig:
     controller_kind: str
     controller_model: str | None
     controller_temp: float
-    controller_base_url: str | None
-    hint_max_chars: int
-    hint_pool_path: str | None
+    controller_base_url: str | None = None
+    hint_max_chars: int = 600
+    hint_pool_path: str | None = None
+    # dataset metadata forwarded to the hint controller prompt
+    # (matches _task_metadata keys used when exporting training data)
+    task_metadata: dict[str, str] | None = None
 
 
 @dataclass

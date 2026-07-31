@@ -9,6 +9,8 @@
 # Modes (same as scripts/eval_dpo_vllm.sh):
 #   MODE=full       — policy_kind=controller (DPO drives tree actions + hints)
 #   MODE=hint_only  — policy_kind=heuristic + controller_kind=llm (hints only)
+#   MODE=unified    — controller_kind=unified (trained model replaces GPT review
+#                     and drives tree expansion; requires an analyzer checkpoint)
 #
 # Examples:
 #   # All tasks, one vLLM, 4 parallel eval clients:
@@ -86,8 +88,13 @@ case "${MODE}" in
     CONTROLLER_KIND="llm"
     MODEL_TAG="${MODEL_TAG:-dpo_hint_only}"
     ;;
+  unified)
+    POLICY_KIND="heuristic"
+    CONTROLLER_KIND="unified"
+    MODEL_TAG="${MODEL_TAG:-dpo_unified}"
+    ;;
   *)
-    echo "Unknown MODE=${MODE} (use full or hint_only)" >&2
+    echo "Unknown MODE=${MODE} (use full, hint_only or unified)" >&2
     exit 1
     ;;
 esac

@@ -309,6 +309,112 @@ class ControllerPolicy:
         return fb
 
 
+class UnifiedControllerPolicy:
+    """Tree selection driven by the unified analyzer's per-node suggestions.
+
+    The trained analyzer reviews each node right after execution and caches
+    (next_action, next_hint, next_confidence) on it, so selection here needs no
+    extra LLM calls: rank actionable nodes by the analyzer's confidence.
+    """
+
+    def __init__(self):
+        self.fallback = HeuristicPolicy()
+
+    @staticmethod
+    def _metric_or_none(node: Node) -> float | None:
+        if node.metric is None or node.metric.value is None:
+            return None
+        return float(node.metric.value)
+
+    def select(
+        self,
+        journal: Journal,
+        task_desc: str,
+        search_cfg: SearchConfig,
+        step_idx: int,
+        total_steps: int,
+    ) -> SearchAction:
+        if len(journal.draft_nodes) < search_cfg.num_drafts:
+            log_controller_event(
+                "draft_phase",
+                step_idx=step_idx,
+                n_drafts=len(journal.draft_nodes),
+                num_drafts=search_cfg.num_drafts,
+            )
+            return SearchAction(kind="draft")
+
+        candidates: list[tuple[float, float, SearchAction]] = []
+        n_abandoned = 0
+
+        for node in journal.buggy_nodes:
+            if not (node.is_leaf and node.debug_depth <= search_cfg.max_debug_depth):
+                continue
+            if node.next_action == "abandon":
+                n_abandoned += 1
+            elif node.next_action == "debug":
+                conf = node.next_confidence if node.next_confidence is not None else 0.5
+                candidates.append(
+                    (
+                        conf,
+                        float("-inf"),
+                        SearchAction(
+                            kind="debug",
+                            parent_id=node.id,
+                            rationale="unified_analyzer",
+                            hint=node.next_hint,
+                        ),
+                    )
+                )
+
+        for node in journal.good_nodes:
+            if node.next_action == "abandon":
+                n_abandoned += 1
+            elif node.next_action == "improve":
+                conf = node.next_confidence if node.next_confidence is not None else 0.5
+                metric = self._metric_or_none(node)
+                candidates.append(
+                    (
+                        conf,
+                        metric if metric is not None else float("-inf"),
+                        SearchAction(
+                            kind="improve",
+                            parent_id=node.id,
+                            rationale="unified_analyzer",
+                            hint=node.next_hint,
+                        ),
+                    )
+                )
+
+        for conf, metric, action in sorted(
+            candidates, key=lambda c: (c[0], c[1]), reverse=True
+        ):
+            is_valid, reason = validate_action(action, journal, search_cfg)
+            if is_valid:
+                log_controller_event(
+                    "unified_select",
+                    step_idx=step_idx,
+                    action=action.kind,
+                    parent_id=action.parent_id,
+                    confidence=conf,
+                )
+                return action
+            logger.warning(
+                "Invalid unified suggestion on %s: %s", action.parent_id, reason
+            )
+
+        if n_abandoned > 0:
+            # The analyzer abandoned every actionable branch: honor it by
+            # drafting a fresh solution instead of grinding on rejected nodes.
+            log_controller_event(
+                "unified_all_abandoned", step_idx=step_idx, n_abandoned=n_abandoned
+            )
+            return SearchAction(kind="draft", rationale="unified_analyzer_abandon")
+
+        # No suggestions available (e.g. nodes reviewed by the GPT fallback);
+        # fall back to the heuristic.
+        return self.fallback.select(journal, task_desc, search_cfg, step_idx, total_steps)
+
+
 class HeuristicPlusControllerPolicy:
     """Heuristic search policy with controller hints on the chosen parent."""
 
@@ -350,7 +456,18 @@ class HeuristicPlusControllerPolicy:
             return action
 
         out = controller.decide(parent, task_desc, journal, search_cfg)
-        if out is not None and out.hint:
+        if out is None:
+            return action
+        if out.action == "abandon":
+            # Abandon hints are trained as "drop this branch" guidance; injecting
+            # them into an improve/debug prompt would mislead the coding model.
+            log_controller_event(
+                "hint_dropped_abandon",
+                node_id=parent.id,
+                heuristic_action=action.kind,
+            )
+            return action
+        if out.hint:
             action.hint = out.hint
         return action
 

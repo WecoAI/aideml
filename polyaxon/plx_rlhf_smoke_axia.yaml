@@ -38,9 +38,15 @@ run:
   connections:
       - local-scratch
 
+  # NOTE: do NOT add a /dev/shm volume here — the Polyaxon agent on axia
+  # already injects one, and a duplicate mountPath makes the k8s API reject
+  # the job (422 FieldValueDuplicate).
+
   container:
-    image: "pytorch/pytorch:2.11.0-cuda12.6-cudnn9-devel"
-    #image: "tlatjddnd101/openrlhf:latest"
+    # nvidia/cuda:*-base images have no python at all -> "python3: command not found".
+    # Default is the NVIDIA PyTorch image OpenRLHF recommends; override with the
+    # prebaked image (docker/openrlhf/Dockerfile) via -P image=... to skip installs.
+    image: "guilhermedrud/aide-openrlhf:0.1"
 
     workingDir: "{{ globals.artifacts_path }}/{{ globals.uuid }}/uploads"
 
@@ -74,6 +80,10 @@ run:
         value: "/tmp/aide-openrlhf-venv"
       # Set HF_TOKEN on the Polyaxon project for model downloads.
 
+    # Invoke via `bash script.sh` (not `./script.sh`): the upload does not
+    # preserve the exec bit, so direct execution fails with Permission denied.
+    # Don't `pip install -r requirements.txt` here either — its unpinned
+    # torch/numpy pins would clobber the prebaked vllm/flash-attn stack.
     command:
       - bash
       - scripts/openrlhf/smoke_test.sh

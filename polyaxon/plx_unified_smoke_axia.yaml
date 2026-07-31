@@ -1,0 +1,103 @@
+version: 1.1
+kind: component
+name: aide-unified-smoke
+description: >
+  GPU smoke test for the unified analyzer setup: serves a base (non-finetuned)
+  local model with vLLM, downloads one random CTU task from the HF dataset repo,
+  and runs a short AIDE search where the local model replaces the GPT review and
+  drives tree expansion (controller_kind=unified). The coding LLM is still GPT
+  (OPENAI_API_KEY required). Fails if the local model never produced a parsable
+  review.
+
+queue: axia/default
+
+inputs:
+  - name: model_id
+    description: HF model to serve with vLLM (no fine-tuning).
+    type: str
+    isOptional: true
+    value: Qwen/Qwen3.5-9B
+
+  - name: steps
+    description: AIDE search steps.
+    type: int
+    isOptional: true
+    value: 5
+
+  - name: num_drafts
+    description: Drafts before the analyzer drives selection.
+    type: int
+    isOptional: true
+    value: 2
+
+  - name: seed
+    description: Seed (also seeds the random task pick).
+    type: int
+    isOptional: true
+    value: 0
+
+  - name: task_index
+    description: CTU CSV row to run; -1 picks a random task.
+    type: int
+    isOptional: true
+    value: -1
+
+  - name: hf_repo
+    description: HF dataset repo with the CTU parquet tables.
+    type: str
+    isOptional: true
+    value: guilhermedrud/ctu_datasets
+
+cache:
+  disable: true
+
+termination:
+  maxRetries: 0
+
+run:
+  kind: job
+  connections:
+    - local-scratch
+
+  # NOTE: do NOT add a /dev/shm volume here — the Polyaxon agent on axia
+  # already injects one, and a duplicate mountPath makes the k8s API reject
+  # the job (422 FieldValueDuplicate).
+
+  container:
+    # Prebaked image with vllm + aide deps (docker/openrlhf/Dockerfile).
+    image: "guilhermedrud/aide-openrlhf:0.1"
+
+    workingDir: "{{ globals.artifacts_path }}/{{ globals.uuid }}/uploads"
+
+    resources:
+      requests:
+        nvidia.com/gpu: "1"
+      limits:
+        nvidia.com/gpu: "1"
+
+    env:
+      - name: PYTHONUNBUFFERED
+        value: "1"
+      - name: MODEL_ID
+        value: "{{ model_id }}"
+      - name: STEPS
+        value: "{{ steps }}"
+      - name: NUM_DRAFTS
+        value: "{{ num_drafts }}"
+      - name: SEED
+        value: "{{ seed }}"
+      - name: TASK_INDEX
+        value: "{{ task_index }}"
+      - name: HF_REPO
+        value: "{{ hf_repo }}"
+      - name: OUT_DIR
+        value: "{{ globals.run_outputs_path }}/unified_smoke"
+      - name: HF_HOME
+        value: "{{ globals.run_outputs_path }}/hf_cache"
+      # Set HF_TOKEN (dataset + model download) and OPENAI_API_KEY (coding LLM
+      # + review fallback) on the Polyaxon project.
+
+    # Invoke via `bash script.sh`: the upload does not preserve the exec bit.
+    command:
+      - bash
+      - scripts/smoke_test_unified_vllm.sh

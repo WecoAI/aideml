@@ -1,0 +1,19 @@
+# Keep upload small; CTU data is materialized on the cluster.
+#configs/gcs/
+.venv/
+__pycache__/
+.git/
+*.pt
+*.ckpt
+
+data/heuristic_runs/
+data/heuristic_runs_index.csv
+data/offline_decisions.jsonl
+data/sft.jsonl
+data/grpo_prompts.jsonl
+workspaces/
+data/kaggle_materialized/
+data/kaggle_raw/
+
+# Large materialized CTU parquet trees (rebuilt per job under run outputs)
+data/heuristic_runs/ctu_materialized/

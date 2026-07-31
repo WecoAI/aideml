@@ -193,9 +193,12 @@ def parse_controller_output(
         return None
 
     hint = obj.get("hint")
-    if not isinstance(hint, str) or not hint.strip():
-        return None
+    if not isinstance(hint, str):
+        hint = ""
     hint = _truncate(hint.strip(), max_hint_chars)
+    # abandon is a valid decision even without hint text
+    if not hint and action != "abandon":
+        return None
 
     confidence = obj.get("confidence", 0.5)
     try:

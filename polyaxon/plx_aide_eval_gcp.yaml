@@ -1,6 +1,8 @@
 version: 1.1
 kind: component
 name: aide-eval-run
+queue: nebius/default
+
 description: >
   One AIDE eval run on the RelBench/MLE-bench manifest (task_index × seed).
   Uploads logs and metrics to guilhermedrud/ctu_datasets/eval/<model_tag>/.
@@ -67,6 +69,10 @@ termination:
 
 run:
   kind: job
+
+  environment:
+    nodeSelector:
+      polyaxon: 32cpus
 
   container:
     image: "python:3.11-slim"

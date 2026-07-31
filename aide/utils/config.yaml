@@ -66,3 +66,5 @@ agent:
     controller_base_url: null
     hint_max_chars: 600
     hint_pool_path: null
+    # dataset metadata dict shown to the hint controller (task_type, target_column, ...)
+    task_metadata: null

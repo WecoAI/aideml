@@ -51,6 +51,12 @@ class Node(DataClassJsonMixin):
     # controller hint used when generating this node (if any)
     hint: str | None = field(default=None, kw_only=True)
 
+    # unified analyzer suggestion for expanding *from* this node
+    # (filled at review time when the trained analyzer replaces the GPT review)
+    next_action: str | None = field(default=None, kw_only=True)
+    next_hint: str | None = field(default=None, kw_only=True)
+    next_confidence: float | None = field(default=None, kw_only=True)
+
     # per-node LLM token usage: {"code": {"in", "out", "total", ...}, "review": {...}}
     token_usage: dict | None = field(default=None, kw_only=True)
 

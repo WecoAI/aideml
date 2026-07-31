@@ -24,6 +24,10 @@ SMOKE_MODEL="${SMOKE_MODEL:-Qwen/Qwen2.5-0.5B-Instruct}"
 NUM_GPUS="${NUM_GPUS:-1}"
 RAY_IP="${RAY_IP:-127.0.0.1}"
 INSTALL_OPENRLHF="${INSTALL_OPENRLHF:-1}"
+# PREBAKED=1 -> image already has torch/vllm/openrlhf in system python:
+# skip venv + heavy installs, just `pip install -e . --no-deps` for aide.
+# PREBAKED=auto (default) detects this by trying to import openrlhf+vllm.
+PREBAKED="${PREBAKED:-auto}"
 HF_HOME="${HF_HOME:-${SMOKE_ROOT}/hf_cache}"
 export HF_HOME
 
@@ -52,12 +56,33 @@ _stop_ray() {
 
 trap _stop_ray EXIT
 
+# Resolve a usable system python once; bare images (e.g. nvidia/cuda:*-base)
+# ship neither `python` nor `python3`.
+SYS_PYTHON="$(command -v python3 || command -v python || true)"
+
+_detect_prebaked() {
+  if [[ "${PREBAKED}" != "auto" ]]; then
+    return 0
+  fi
+  if [[ -n "${SYS_PYTHON}" ]] && "${SYS_PYTHON}" -c "import openrlhf, vllm, torch" >/dev/null 2>&1; then
+    PREBAKED=1
+    _info "Detected prebaked image (openrlhf+vllm importable in system python)"
+  else
+    PREBAKED=0
+  fi
+}
+_detect_prebaked
+
 check_gpu_system() {
   _info "=== GPU / CUDA (system python) ==="
   command -v nvidia-smi >/dev/null 2>&1 || { _fail "nvidia-smi not found"; return 1; }
   nvidia-smi -L
   nvidia-smi --query-gpu=index,name,memory.total,driver_version --format=csv,noheader
-  python3 - <<'PY'
+  if [[ -z "${SYS_PYTHON}" ]]; then
+    _fail "no python/python3 found in the image; use a python-enabled image (e.g. the prebaked one from docker/openrlhf/Dockerfile)"
+    return 1
+  fi
+  "${SYS_PYTHON}" - <<'PY'
 import torch
 print("torch:", torch.__version__)
 print("cuda available:", torch.cuda.is_available())
@@ -91,13 +116,30 @@ setup_venv() {
   if [[ -n "${_VENV_READY:-}" ]]; then
     return 0
   fi
+  if [[ "${PREBAKED}" == "1" ]]; then
+    _VENV_READY=1
+    _info "=== Prebaked image: using system python (no venv) ==="
+    # Some images only ship python3; make sure `python` resolves for the
+    # remaining steps.
+    if ! command -v python >/dev/null 2>&1; then
+      mkdir -p /tmp/aide-pybin
+      ln -sf "${SYS_PYTHON}" /tmp/aide-pybin/python
+      export PATH="/tmp/aide-pybin:${PATH}"
+    fi
+    _ok "python: ${SYS_PYTHON} ($("${SYS_PYTHON}" -V 2>&1))"
+    return 0
+  fi
   _info "=== Python venv (${VENV_DIR}) ==="
-  _info "python3: $(command -v python3) ($(python3 -V 2>&1))"
+  if [[ -z "${SYS_PYTHON}" ]]; then
+    _fail "no python/python3 in the image; cannot create venv"
+    return 1
+  fi
+  _info "system python: ${SYS_PYTHON} ($("${SYS_PYTHON}" -V 2>&1))"
 
   if [[ ! -x "${VENV_DIR}/bin/python" ]]; then
     rm -rf "${VENV_DIR}"
     # ensurepip needs python3.12-venv via apt, but cluster blocks archive.ubuntu.com.
-    python3 -m venv --system-site-packages --without-pip "${VENV_DIR}"
+    "${SYS_PYTHON}" -m venv --system-site-packages --without-pip "${VENV_DIR}"
   fi
 
   # shellcheck disable=SC1091
@@ -123,7 +165,11 @@ PY
 }
 
 venv_python() {
-  echo "${VENV_DIR}/bin/python"
+  if [[ "${PREBAKED}" == "1" ]]; then
+    echo "${SYS_PYTHON}"
+  else
+    echo "${VENV_DIR}/bin/python"
+  fi
 }
 
 install_openrlhf() {
@@ -132,6 +178,19 @@ install_openrlhf() {
     return 0
   fi
   setup_venv
+  if [[ "${PREBAKED}" == "1" ]]; then
+    _info "=== Prebaked image: installing aide package ==="
+    # No --no-deps: pyproject deps are unpinned and pip's default
+    # only-if-needed policy won't touch the baked torch/vllm stack, but it
+    # will pull small pure-python deps missing from the image (e.g. backoff).
+    "${SYS_PYTHON}" -m pip install -e .
+    # The base NVIDIA image ships an `nvtx` package whose DummyDomain API is
+    # incompatible with deepspeed's profiling wrapper (push_range TypeError).
+    # Without it deepspeed falls back to torch.cuda.nvtx, which works.
+    "${SYS_PYTHON}" -m pip uninstall -y nvtx >/dev/null 2>&1 || true
+    _ok "aide installed on prebaked stack"
+    return 0
+  fi
   _info "=== Install OpenRLHF stack ==="
   python -m pip install -U pip wheel
   python -m pip install "vllm==0.19.1"
@@ -179,29 +238,28 @@ PY
   _ok "Ray head running with GPU resources"
 }
 
+# Args below target OpenRLHF 0.10.x (namespaced --data.*/--train.*/... CLI;
+# the old flat flags like --pretrain/--dataset were removed upstream).
 _run_sft() {
   setup_venv
   _info "=== SFT smoke (${SMOKE_MODEL}) ==="
   local out="${SMOKE_ROOT}/sft"
   mkdir -p "${out}"
 
-  if python -m openrlhf.cli.train_sft --help 2>&1 | grep -q -- '--config'; then
-    sed "s|output_dir:.*|output_dir: ${out}|; s|pretrain:.*|pretrain: ${SMOKE_MODEL}|" \
-      configs/openrlhf/sft_smoke.yaml > "${SMOKE_ROOT}/sft_smoke_runtime.yaml"
-    python -m openrlhf.cli.train_sft --config "${SMOKE_ROOT}/sft_smoke_runtime.yaml"
-  else
-    python -m openrlhf.cli.train_sft \
-      --pretrain "${SMOKE_MODEL}" \
-      --dataset data/openrlhf_smoke/sft.jsonl \
-      --input_key messages \
-      --apply_chat_template \
-      --max_epochs 1 \
-      --learning_rate 2e-5 \
-      --batch_size 1 \
-      --micro_train_batch_size 1 \
-      --max_len 512 \
-      --output_dir "${out}"
-  fi
+  deepspeed --module openrlhf.cli.train_sft \
+    --model.model_name_or_path "${SMOKE_MODEL}" \
+    --data.dataset data/openrlhf_smoke/sft.jsonl \
+    --data.input_key messages \
+    --data.apply_chat_template \
+    --data.max_len 512 \
+    --train.max_epochs 1 \
+    --train.batch_size 1 \
+    --train.micro_batch_size 1 \
+    --adam.lr 2e-5 \
+    --ds.zero_stage 2 \
+    --ds.param_dtype bf16 \
+    --ckpt.output_dir "${out}" \
+    --ckpt.save_hf
   _ok "SFT smoke finished -> ${out}"
 }
 
@@ -217,40 +275,48 @@ _run_grpo() {
     check_ray
   fi
 
-  local cfg="${SMOKE_ROOT}/grpo_smoke_runtime.yaml"
-  sed "s|output_dir:.*|output_dir: ${out}|; s|pretrain:.*|pretrain: ${SMOKE_MODEL}|" \
-    configs/openrlhf/grpo_singleturn_smoke.yaml > "${cfg}"
-
-  if python -m openrlhf.cli.train_ppo_ray --help 2>&1 | grep -q -- '--config'; then
-    ray job submit --address="http://${RAY_IP}:8265" \
-      --working-dir "$(pwd)" \
-      -- "${py}" -m openrlhf.cli.train_ppo_ray --config "${cfg}"
-  else
-    _warn "OpenRLHF build lacks --config; using explicit 1-GPU CLI flags"
-    ray job submit --address="http://${RAY_IP}:8265" \
-      --working-dir "$(pwd)" \
-      -- "${py}" -m openrlhf.cli.train_ppo_ray \
-      --pretrain "${SMOKE_MODEL}" \
-      --dataset data/openrlhf_smoke/grpo_prompts.jsonl \
-      --input_key messages \
-      --apply_chat_template \
-      --train.reward_func_path aide/rlhf/grpo_reward_entrypoint.py \
-      --train.algorithm grpo \
-      --max_epochs 1 \
-      --train.batch_size 1 \
-      --micro_train_batch_size 1 \
-      --max_len 512 \
-      --rollout.batch_size 2 \
-      --rollout.n_samples_per_prompt 2 \
-      --rollout.max_new_tokens 128 \
-      --actor.num_nodes 1 --actor.num_gpus_per_node 1 \
-      --ref.num_nodes 1 --ref.num_gpus_per_node 1 \
-      --vllm.num_engines 1 --vllm.tensor_parallel_size 1 \
-      --train.colocate_all \
-      --vllm.gpu_memory_utilization 0.5 \
-      --vllm.enforce_eager \
-      --output_dir "${out}"
-  fi
+  # GRPO = PPO trainer with group_norm advantage estimator + KL-in-loss.
+  # A reward endpoint ending in .py is importlib-loaded and its
+  # reward_func(queries, prompts, labels) is called (see aide/rlhf/grpo_reward_entrypoint.py).
+  #
+  # Ray's --working-dir packaging honors .gitignore, which ignores
+  # data/openrlhf_smoke/ — without this flag the dataset is silently
+  # dropped from the job sandbox (FileNotFoundError in PPOTrainer).
+  RAY_RUNTIME_ENV_IGNORE_GITIGNORE=1 \
+  ray job submit --address="http://${RAY_IP}:8265" \
+    --working-dir "$(pwd)" \
+    -- "${py}" -m openrlhf.cli.train_ppo_ray \
+    --actor.model_name_or_path "${SMOKE_MODEL}" \
+    --data.prompt_dataset data/openrlhf_smoke/grpo_prompts.jsonl \
+    --data.input_key messages \
+    --data.label_key label \
+    --data.apply_chat_template \
+    --reward.remote_url aide/rlhf/grpo_reward_entrypoint.py \
+    --algo.advantage.estimator group_norm \
+    --algo.kl.use_loss \
+    --algo.kl.init_coef 0.001 \
+    --train.max_epochs 1 \
+    --train.num_episodes 1 \
+    --train.batch_size 4 \
+    --train.micro_batch_size 1 \
+    --data.max_len 512 \
+    --rollout.batch_size 2 \
+    --rollout.micro_batch_size 1 \
+    --rollout.n_samples_per_prompt 2 \
+    --rollout.max_new_tokens 128 \
+    --actor.num_nodes 1 --actor.num_gpus_per_node 1 \
+    --ref.num_nodes 1 --ref.num_gpus_per_node 1 \
+    --vllm.num_engines 1 --vllm.tensor_parallel_size 1 \
+    --train.colocate_all \
+    --vllm.gpu_memory_utilization 0.5 \
+    --vllm.enforce_eager \
+    --vllm.enable_sleep \
+    --ds.enable_sleep \
+    --ds.zero_stage 2 \
+    --ds.param_dtype bf16 \
+    --actor.adam.lr 1e-6 \
+    --ckpt.output_dir "${out}" \
+    --ckpt.save_hf
   _ok "GRPO smoke finished -> ${out}"
 }
 

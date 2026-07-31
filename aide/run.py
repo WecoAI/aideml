@@ -15,6 +15,7 @@ from .policy import (
     HeuristicPlusControllerPolicy,
     LLMPolicy,
     SearchPolicy,
+    UnifiedControllerPolicy,
 )
 from omegaconf import OmegaConf
 from rich.columns import Columns
@@ -65,6 +66,8 @@ def run():
     def build_policy() -> SearchPolicy:
         kind = cfg.agent.search.policy_kind
         controller_kind = cfg.agent.search.controller_kind
+        if controller_kind == "unified":
+            return UnifiedControllerPolicy()
         if kind == "heuristic":
             if controller_kind != "none":
                 return HeuristicPlusControllerPolicy()
