@@ -1,9 +1,12 @@
+import logging
 from dataclasses import dataclass, field
 from functools import total_ordering
 from typing import Any
 
 import numpy as np
 from dataclasses_json import DataClassJsonMixin
+
+logger = logging.getLogger("aide")
 
 
 @dataclass
@@ -24,12 +27,21 @@ class MetricValue(DataClassJsonMixin):
 
     def __gt__(self, other) -> bool:
         """True if self is a _better_ (not necessarily larger) metric value than other"""
+        if not isinstance(other, MetricValue):
+            return NotImplemented
         if self.value is None:
             return False
         if other.value is None:
             return True
 
-        assert type(self) is type(other) and (self.maximize == other.maximize)
+        # When the LLM inconsistently judges lower_is_better across nodes,
+        # maximize flags can disagree for the same metric. Fall back to
+        # self's direction rather than crashing the entire run (#57).
+        if self.maximize != other.maximize:
+            logger.warning(
+                "Comparing metrics with conflicting maximize flags "
+                f"({self.maximize} vs {other.maximize}), using self's direction"
+            )
 
         if self.value == other.value:
             return False
@@ -38,6 +50,8 @@ class MetricValue(DataClassJsonMixin):
         return comp if self.maximize else not comp  # type: ignore
 
     def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, MetricValue):
+            return NotImplemented
         return self.value == other.value
 
     def __repr__(self) -> str:

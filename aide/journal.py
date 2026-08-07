@@ -56,7 +56,7 @@ class Node(DataClassJsonMixin):
     def stage_name(self) -> Literal["draft", "debug", "improve"]:
         """
         Return the stage of the node:
-        - "stage" if the node is an initial solution draft
+        - "draft" if the node is an initial solution draft
         - "debug" if the node is the result of a debugging step
         - "improve" if the node is the result of an improvement step
         """
