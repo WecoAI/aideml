@@ -4,12 +4,13 @@ Covers the crash reported in #57 (mismatched maximize flags) and
 the __eq__ contract (non-MetricValue operands should not crash).
 """
 
+from itertools import permutations
+
 import pytest
 
+from aide.journal import Journal, Node
 from aide.utils.metric import MetricValue, WorstMetricValue
 
-
-# ---- __eq__ ----
 
 def test_eq_same_value():
     a = MetricValue(0.9, maximize=True)
@@ -36,33 +37,20 @@ def test_eq_works_with_worst():
     assert a != b
 
 
-# ---- __gt__ with mismatched maximize (#57) ----
-
-def test_gt_mismatched_maximize_does_not_crash():
-    """The LLM can inconsistently judge lower_is_better across nodes.
-
-    Before the fix this raised AssertionError and killed the run.
-    """
+def test_gt_mismatched_maximize_requires_journal_context():
     a = MetricValue(0.9, maximize=True)
     b = MetricValue(0.8, maximize=False)
-    # should not raise — falls back to self's direction
-    result = a > b
-    assert isinstance(result, bool)
 
-
-def test_gt_mismatched_maximize_uses_self_direction():
-    higher = MetricValue(0.9, maximize=True)
-    lower = MetricValue(0.8, maximize=True)
-    # maximize=True means higher is better
-    assert higher > lower
+    assert a.__gt__(b) is NotImplemented
+    assert b.__gt__(a) is NotImplemented
+    with pytest.raises(TypeError):
+        _ = a > b
 
 
 def test_gt_returns_not_implemented_for_non_metric():
     m = MetricValue(0.9, maximize=True)
     assert m.__gt__(42) is NotImplemented
 
-
-# ---- __gt__ normal behavior (regression guard) ----
 
 def test_gt_maximize_true():
     a = MetricValue(0.9, maximize=True)
@@ -100,17 +88,44 @@ def test_gt_both_none():
     assert not b > a
 
 
-# ---- max() across nodes (the actual crash site from #57) ----
+def _node(value, maximize):
+    return Node(
+        code="",
+        metric=MetricValue(value, maximize=maximize),
+        is_buggy=False,
+    )
 
-def test_max_with_mismatched_maximize_does_not_crash():
-    """Journal.get_best_node() calls max() over metrics — this was the crash site."""
-    metrics = [
-        MetricValue(0.8, maximize=True),
-        MetricValue(0.85, maximize=False),
-        MetricValue(0.9, maximize=True),
-    ]
-    best = max(metrics)
-    assert best.value == 0.9
+
+def test_journal_canonicalizes_conflicting_direction(caplog):
+    journal = Journal()
+    first = _node(0.9, maximize=True)
+    conflicting = _node(0.85, maximize=False)
+
+    journal.append(first)
+    journal.append(conflicting)
+
+    assert journal.metric_maximize is True
+    assert conflicting.metric.maximize is True
+    assert journal.get_best_node() is first
+    assert "using the journal direction" in caplog.text
+
+
+def test_best_node_is_permutation_invariant():
+    metrics = [(0.8, True), (0.85, False), (0.9, True)]
+
+    for order in permutations(metrics):
+        journal = Journal(metric_maximize=True)
+        for value, maximize in order:
+            journal.append(_node(value, maximize))
+        assert journal.get_best_node().metric.value == 0.9
+
+
+def test_journal_preserves_minimize_direction():
+    journal = Journal(metric_maximize=False)
+    journal.append(_node(0.9, maximize=True))
+    journal.append(_node(0.8, maximize=False))
+
+    assert journal.get_best_node().metric.value == 0.8
 
 
 def test_max_with_worst_values():

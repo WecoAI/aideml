@@ -1,12 +1,9 @@
-import logging
 from dataclasses import dataclass, field
 from functools import total_ordering
 from typing import Any
 
 import numpy as np
 from dataclasses_json import DataClassJsonMixin
-
-logger = logging.getLogger("aide")
 
 
 @dataclass
@@ -34,14 +31,8 @@ class MetricValue(DataClassJsonMixin):
         if other.value is None:
             return True
 
-        # When the LLM inconsistently judges lower_is_better across nodes,
-        # maximize flags can disagree for the same metric. Fall back to
-        # self's direction rather than crashing the entire run (#57).
         if self.maximize != other.maximize:
-            logger.warning(
-                "Comparing metrics with conflicting maximize flags "
-                f"({self.maximize} vs {other.maximize}), using self's direction"
-            )
+            return NotImplemented
 
         if self.value == other.value:
             return False

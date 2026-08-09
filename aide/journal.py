@@ -7,6 +7,7 @@ The journal is the core datastructure in AIDE that contains:
 ...
 """
 
+import logging
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -16,6 +17,8 @@ from dataclasses_json import DataClassJsonMixin
 from .interpreter import ExecutionResult
 from .utils.metric import MetricValue
 from .utils.response import trim_long_string
+
+logger = logging.getLogger("aide")
 
 
 @dataclass(eq=False)
@@ -136,7 +139,11 @@ class Journal(DataClassJsonMixin):
     """A collection of nodes representing the solution tree."""
 
     nodes: list[Node] = field(default_factory=list)
+    metric_maximize: bool | None = field(default=None, kw_only=True)
     # eda: InteractiveSession = field(default_factory=lambda: InteractiveSession())
+
+    def __post_init__(self) -> None:
+        self._canonicalize_metric_directions()
 
     def __getitem__(self, idx: int) -> Node:
         return self.nodes[idx]
@@ -149,6 +156,30 @@ class Journal(DataClassJsonMixin):
         """Append a new node to the journal."""
         node.step = len(self.nodes)
         self.nodes.append(node)
+        self._canonicalize_metric_directions()
+
+    def _canonicalize_metric_directions(self) -> None:
+        metrics = [
+            node.metric
+            for node in self.nodes
+            if node.metric is not None and not node.metric.is_worst
+        ]
+        if self.metric_maximize is None:
+            self.metric_maximize = next(
+                (metric.maximize for metric in metrics if metric.maximize is not None),
+                None,
+            )
+        if self.metric_maximize is None:
+            return
+
+        for metric in metrics:
+            if metric.maximize != self.metric_maximize:
+                logger.warning(
+                    "Metric direction changed from %s to %s; using the journal direction",
+                    metric.maximize,
+                    self.metric_maximize,
+                )
+                metric.maximize = self.metric_maximize
 
     @property
     def draft_nodes(self) -> list[Node]:
@@ -171,6 +202,7 @@ class Journal(DataClassJsonMixin):
 
     def get_best_node(self, only_good=True) -> None | Node:
         """Return the best solution found so far (node with the highest validation metric)."""
+        self._canonicalize_metric_directions()
         if only_good:
             nodes = self.good_nodes
             if not nodes:
