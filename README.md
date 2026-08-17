@@ -92,8 +92,12 @@ After the run finishes you’ll find:
 
 ## Web UI
 
+To use the web UI, clone the repository locally and run the UI via streamlit:
+
 ```bash
-pip install -U aideml   # adds streamlit
+git clone https://github.com/WecoAI/aideml.git
+cd aideml
+pip install -e . # adds streamlit
 cd aide/webui
 streamlit run app.py
 ```
