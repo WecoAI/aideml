@@ -140,3 +140,48 @@ def test_max_with_worst_values():
     ]
     best = max(metrics)
     assert best.value == 0.5
+
+
+def test_nan_metric_is_treated_as_worst():
+    """A NaN score is not a usable metric value."""
+    m = MetricValue(float("nan"), maximize=False)
+    assert m.value is None
+    assert m.is_worst
+
+
+def test_nan_never_beats_a_real_metric():
+    """NaN comparisons are all False, so an unguarded __gt__ is not a total order."""
+    for maximize in (True, False):
+        real = MetricValue(0.5, maximize=maximize)
+        nan = MetricValue(float("nan"), maximize=maximize)
+        other_nan = MetricValue(float("nan"), maximize=maximize)
+
+        assert real > nan
+        assert not nan > real  # antisymmetric
+        assert not nan > other_nan  # irreflexive
+
+
+def test_best_node_ignores_nan_regardless_of_order():
+    """max() must not return a diverged node just because it was appended first."""
+    for maximize in (True, False):
+        expected = 0.7 if maximize else 0.5
+        for order in permutations([0.5, float("nan"), 0.7]):
+            journal = Journal(metric_maximize=maximize)
+            for value in order:
+                journal.append(_node(value, maximize))
+            assert journal.get_best_node().metric.value == expected
+
+
+def test_best_node_ignores_nan_without_journal_direction(monkeypatch):
+    """The same holds on the max(nodes, key=n.metric) path."""
+
+    def fail_rank(metric):
+        raise AssertionError("The fallback must not use canonical metric ranking")
+
+    for order in permutations([0.5, float("nan")]):
+        journal = Journal()
+        for value in order:
+            journal.append(_node(value, maximize=None))
+        monkeypatch.setattr(journal, "_metric_rank", fail_rank)
+        assert journal.get_best_node().metric.value == 0.5
+        assert journal.metric_maximize is None

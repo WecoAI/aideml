@@ -1,3 +1,4 @@
+import math
 from dataclasses import dataclass, field
 from functools import total_ordering
 from typing import Any
@@ -20,7 +21,14 @@ class MetricValue(DataClassJsonMixin):
     def __post_init__(self):
         if self.value is not None:
             assert isinstance(self.value, (float, int, np.number, np.floating))
-            self.value = float(self.value)
+            value = float(self.value)
+            # NaN is not a comparable score. Every comparison against it is
+            # False, which makes __gt__ neither irreflexive (nan > nan is True
+            # when minimizing) nor antisymmetric (nan > x and x > nan are both
+            # True), so max() over a mix of NaN and real metrics returns
+            # whichever happened to come first. Collapse it onto the existing
+            # "no value" sentinel, which is already ordered as the worst.
+            self.value = value if not math.isnan(value) else None
 
     def __gt__(self, other) -> bool:
         """True if self is a _better_ (not necessarily larger) metric value than other"""
