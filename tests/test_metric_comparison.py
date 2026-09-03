@@ -141,6 +141,7 @@ def test_max_with_worst_values():
     best = max(metrics)
     assert best.value == 0.5
 
+
 def test_nan_metric_is_treated_as_worst():
     """A NaN score is not a usable metric value."""
     m = MetricValue(float("nan"), maximize=False)
@@ -156,8 +157,8 @@ def test_nan_never_beats_a_real_metric():
         other_nan = MetricValue(float("nan"), maximize=maximize)
 
         assert real > nan
-        assert not nan > real          # antisymmetric
-        assert not nan > other_nan     # irreflexive
+        assert not nan > real  # antisymmetric
+        assert not nan > other_nan  # irreflexive
 
 
 def test_best_node_ignores_nan_regardless_of_order():
@@ -171,11 +172,16 @@ def test_best_node_ignores_nan_regardless_of_order():
             assert journal.get_best_node().metric.value == expected
 
 
-def test_best_node_ignores_nan_without_journal_direction():
+def test_best_node_ignores_nan_without_journal_direction(monkeypatch):
     """The same holds on the max(nodes, key=n.metric) path."""
+
+    def fail_rank(metric):
+        raise AssertionError("The fallback must not use canonical metric ranking")
+
     for order in permutations([0.5, float("nan")]):
         journal = Journal()
         for value in order:
-            journal.append(_node(value, maximize=True))
-        journal.metric_maximize = None
+            journal.append(_node(value, maximize=None))
+        monkeypatch.setattr(journal, "_metric_rank", fail_rank)
         assert journal.get_best_node().metric.value == 0.5
+        assert journal.metric_maximize is None
