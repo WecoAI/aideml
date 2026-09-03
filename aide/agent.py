@@ -1,4 +1,5 @@
 import logging
+import math
 import random
 from dataclasses import dataclass
 from typing import Any, Callable, cast
@@ -420,8 +421,10 @@ class Agent:
             ),
         )
 
-        # if the metric isn't a float then fill the metric with the worst metric
-        if not isinstance(response["metric"], float):
+        # if the metric isn't a float then fill the metric with the worst metric.
+        # NaN passes isinstance(..., float), so a diverged run that reports a NaN
+        # validation metric would otherwise be recorded as a good node.
+        if not isinstance(response["metric"], float) or math.isnan(response["metric"]):
             response["metric"] = None
 
         node.analysis = response["summary"]
