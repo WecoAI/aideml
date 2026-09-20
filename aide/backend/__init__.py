@@ -1,4 +1,10 @@
-from . import backend_anthropic, backend_openai, backend_openrouter, backend_gemini
+from . import (
+    backend_anthropic,
+    backend_openai,
+    backend_openrouter,
+    backend_gemini,
+    backend_litellm,
+)
 from .utils import FunctionSpec, OutputType, PromptType, compile_prompt_to_md
 import re
 import logging
@@ -8,8 +14,12 @@ logger = logging.getLogger("aide")
 
 
 def determine_provider(model: str) -> str:
+    # Explicit opt-in to the LiteLLM gateway via a `litellm/` prefix.
+    # Checked first so `litellm/gpt-4o` routes to LiteLLM, not the OpenAI backend.
+    if model.startswith("litellm/"):
+        return "litellm"
     # Check if model matches OpenAI patterns first
-    if re.match(r"^(gpt-.*|o\d+(-.*)?|codex-mini-latest)$", model):
+    elif re.match(r"^(gpt-.*|o\d+(-.*)?|codex-mini-latest)$", model):
         return "openai"
     elif model.startswith("claude-"):
         return "anthropic"
@@ -28,6 +38,7 @@ provider_to_query_func = {
     "anthropic": backend_anthropic.query,
     "openrouter": backend_openrouter.query,
     "gemini": backend_gemini.query,
+    "litellm": backend_litellm.query,
 }
 
 
