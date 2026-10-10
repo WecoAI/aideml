@@ -174,7 +174,7 @@ class Agent:
             debuggable_nodes = [
                 n
                 for n in self.journal.buggy_nodes
-                if (n.is_leaf and n.debug_depth <= search_cfg.max_debug_depth)
+                if (n.is_leaf and n.debug_depth < search_cfg.max_debug_depth)
             ]
             if debuggable_nodes:
                 logger.debug("[search policy] debugging")
