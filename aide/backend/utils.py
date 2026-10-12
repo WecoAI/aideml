@@ -111,6 +111,7 @@ class FunctionSpec(DataClassJsonMixin):
             "name": self.name,
             "description": self.description,
             "parameters": self.json_schema,
+            "strict": False,  # Preserve optional fields in arbitrary FunctionSpecs.
         }
 
     @property

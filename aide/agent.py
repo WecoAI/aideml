@@ -9,7 +9,7 @@ from .backend import FunctionSpec, query
 from .interpreter import ExecutionResult
 from .journal import Journal, Node
 from .utils import data_preview
-from .utils.config import Config
+from .utils.config import Config, stage_query_kwargs
 from .utils.metric import MetricValue, WorstMetricValue
 from .utils.response import extract_code, extract_text_up_to_code, wrap_code
 
@@ -32,7 +32,7 @@ review_func_spec = FunctionSpec(
                 "description": "if there is a bug, propose a fix. Otherwise, write a short summary (2-3 sentences) describing the empirical findings.",
             },
             "metric": {
-                "type": "number",
+                "type": ["number", "null"],
                 "description": "If the code ran successfully, report the value of the validation metric. Otherwise, leave it null.",
             },
             "lower_is_better": {
@@ -98,8 +98,7 @@ def determine_task_metric(task_desc, acfg) -> TaskMetric | None:
                 system_message=prompt,
                 user_message=None,
                 func_spec=task_metric_func_spec,
-                model=acfg.feedback.model,
-                temperature=acfg.feedback.temp,
+                **stage_query_kwargs(acfg.feedback),
             ),
         )
         metric_name = response["metric_name"]
@@ -258,8 +257,7 @@ class Agent:
             completion_text = query(
                 system_message=prompt,
                 user_message=None,
-                model=self.acfg.code.model,
-                temperature=self.acfg.code.temp,
+                **stage_query_kwargs(self.acfg.code),
             )
 
             code = extract_code(completion_text)
@@ -416,8 +414,7 @@ class Agent:
                 system_message=prompt,
                 user_message=None,
                 func_spec=review_func_spec,
-                model=self.acfg.feedback.model,
-                temperature=self.acfg.feedback.temp,
+                **stage_query_kwargs(self.acfg.feedback),
             ),
         )
 

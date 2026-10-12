@@ -5,7 +5,7 @@ humanize==4.8.0
 jsonschema==4.19.2
 numpy==1.26.2
 openai>=1.69.0
-anthropic>=0.20.0
+anthropic>=0.86.0
 pandas==2.1.4
 pytest~=9.0.3
 requests>=2.32.4

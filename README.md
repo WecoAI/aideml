@@ -112,7 +112,7 @@ The UI shows live logs, the solution tree, and the best code.
 
 ```bash
 # Choose a different coding model and run 50 steps
-aide agent.code.model="claude-4-sonnet" \
+aide agent.code.model="claude-sonnet-5-5" \
      agent.steps=50 \
      data_dir=… goal=… eval=…
 ```
@@ -121,9 +121,74 @@ Common flags
 
 | Flag | Purpose | Default |
 | --- | --- | --- |
-| `agent.code.model` | LLM used to write code | `gpt-4-turbo` |
+| `agent.code.model` | LLM used to write code | `o4-mini` |
+| `agent.feedback.model` | LLM used for execution review and startup metric selection | `gpt-4.1-mini` |
+| `agent.code.reasoning_effort` | Reasoning effort, when supported by the model | `null` (provider default) |
+| `agent.code.max_tokens` | Output budget, including reasoning tokens | `null` (backend default) |
 | `agent.steps` | Improvement iterations | `20` |
 | `agent.search.num_drafts` | Drafts per step | `5` |
+
+### Current OpenAI and Anthropic models
+
+Model requirements checked against official documentation on **12 October 2026**.
+The existing default models are retained; choose a newer model for each stage:
+
+```bash
+aide agent.code.model=gpt-6.1-sol agent.feedback.model=gpt-6-luna \
+     agent.code.reasoning_effort=medium agent.code.max_tokens=16384 \
+     agent.feedback.reasoning_effort=low agent.feedback.max_tokens=16384 \
+     data_dir=… goal=… eval=…
+
+# Set ANTHROPIC_API_KEY to use Claude for coding and feedback.
+aide agent.code.model=claude-sonnet-5-5 agent.feedback.model=claude-haiku-5-5 \
+     agent.code.reasoning_effort=medium agent.code.max_tokens=16384 \
+     agent.feedback.reasoning_effort=low agent.feedback.max_tokens=16384 \
+     data_dir=… goal=… eval=…
+```
+
+The same `reasoning_effort` and `max_tokens` options apply to `report`. Old
+configuration files still work. These budgets are starting points: reasoning
+uses part of the output budget, so tune effort and token limits for your task.
+Anthropic defaults to 4096 tokens when no budget is set; the report stage also
+keeps its 4096-token default. OpenAI otherwise uses its API default. Model access
+and provider-side context limits still apply.
+
+- [OpenAI's GPT-6 guide](https://developers.openai.com/api/docs/guides/latest-model)
+  lists `gpt-6-astra`, `gpt-6.1-sol`, and `gpt-6-luna`. AIDE already uses Responses
+  for official OpenAI models, including structured tool results. Astra and
+  GPT-6.1 Sol require Responses for tool calling; GPT-6 Sol and Luna require it
+  when reasoning with tools. AIDE omits sampling parameters for GPT-5/GPT-6 and
+  o-series reasoning requests. An explicit `reasoning_effort=none` retains sampling
+  for models that support that effort, including GPT-6 Sol and Luna. Astra and
+  GPT-6.1 Sol do not support `none`; unsupported effort values produce API errors.
+  Responses tools explicitly use non-strict schemas to preserve arbitrary
+  `FunctionSpec` optional fields; their returned arguments are validated locally.
+- [Anthropic's model overview](https://platform.claude.com/docs/en/models/overview)
+  lists `claude-fable-5-1`, `claude-opus-5-5`, `claude-sonnet-5-5`, and
+  `claude-haiku-5-5`. AIDE reads text and tool blocks by type, skipping thinking
+  blocks, and omits sampling parameters for these models. For Fable 5.1, Opus 5.5,
+  and Sonnet 5.5, which reject forced tools, AIDE requests automatic tool use and
+  explicitly asks for the required tool. This is best effort: a missing, wrong,
+  or invalid tool result raises an error. Haiku 5.5 and older models retain
+  forced tool use. See the [Opus migration guide](https://platform.claude.com/docs/en/models/opus-5-5/migration-guide),
+  [Sonnet migration guide](https://platform.claude.com/docs/en/models/sonnet-5-5/migration-guide),
+  [Haiku migration guide](https://platform.claude.com/docs/en/models/haiku-5-5/migration-guide),
+  and [Fable migration guide](https://platform.claude.com/docs/en/models/fable-5-1/migration-guide).
+
+The SDK requirements are `openai>=1.69.0` (Responses support) and
+`anthropic>=0.86.0` (Messages tools and `output_config.effort`). Older Claude
+models retain sampling settings through the SDK's `extra_body` option, including
+with [Anthropic SDK v1](https://github.com/anthropics/anthropic-sdk-python/blob/main/MIGRATION.md),
+which removed the named sampling arguments. Transient failures
+get at most five backend attempts and then raise the provider error. Structured
+requests raise on missing tool calls instead of silently falling back to text;
+Responses that do not complete and Anthropic truncations or refusals also raise.
+The startup metric selector retains its existing fallback if inference fails.
+
+The regression tests use real SDKs with mocked HTTP responses to check request
+serialization, code output, both built-in tool schemas, arbitrary optional
+schemas, configuration forwarding, and retry exhaustion. They do not establish
+live model access, task quality, or end-to-end provider compatibility.
 
 ---
 
