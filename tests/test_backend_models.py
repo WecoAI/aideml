@@ -23,12 +23,19 @@ from aide.journal import Journal, Node
 from aide.journal2report import journal2report
 from aide.utils.config import Config, StageConfig
 
-OPENAI_MODELS = ["gpt-6-astra", "gpt-6.1-sol", "gpt-6-luna", "gpt-6-sol"]
+OPENAI_MODELS = [
+    "gpt-6-astra",
+    "gpt-6.1-sol",
+    "gpt-6-luna",
+    "gpt-6-sol",
+    "gpt-future-test",
+]
 CLAUDE_MODELS = [
     "claude-fable-5-1",
     "claude-opus-5-5",
     "claude-sonnet-5-5",
     "claude-haiku-5-5",
+    "claude-future-test",
 ]
 CASES = [
     (None, "Plan\n```python\nprint(1)\n```"),
@@ -165,8 +172,8 @@ def test_current_models_serialize_and_parse(install_client, model, spec, value):
         "Generate or review a solution.",
         None,
         model=model,
-        temperature=0.5,
-        top_p=0.9,
+        temperature=None,
+        top_p=None,
         max_tokens=16384,
         reasoning_effort="low",
         func_spec=spec,
@@ -184,11 +191,8 @@ def test_current_models_serialize_and_parse(install_client, model, spec, value):
         assert captured["output_config"] == {"effort": "low"}
         if spec:
             assert captured["tools"][0]["input_schema"] == spec.json_schema
-            if model != "claude-haiku-5-5":
-                assert captured["tool_choice"] == {"type": "auto"}
-                assert spec.name in captured["messages"][0]["content"]
-            else:
-                assert captured["tool_choice"] == spec.anthropic_tool_choice_dict
+            assert captured["tool_choice"] == {"type": "auto"}
+            assert spec.name in captured["messages"][0]["content"]
 
 
 @pytest.mark.parametrize("model", ["gpt-4.1-mini", "gpt-6-luna", "claude-haiku-4-5"])
@@ -368,7 +372,8 @@ def test_agent_and_report_forward_stage_options(install_client, model):
     raw_cfg.exp_name = "test"
     cfg = OmegaConf.merge(OmegaConf.structured(Config), raw_cfg)
     for stage in [cfg.agent.code, cfg.agent.feedback, cfg.report]:
-        stage.model = model
+        stage.model = "custom-deployment"
+        stage.provider = provider
         stage.max_tokens = 16384
         stage.reasoning_effort = "low"
     assert determine_task_metric("Use RMSE", cfg.agent).name == "RMSE"
@@ -425,7 +430,7 @@ def test_bad_tool_request_is_not_retried_or_downgraded(install_client, provider,
     assert attempts[0]["tools"]
 
 
-def test_reasoning_logprobs_are_removed(install_client):
+def test_explicit_sampling_options_are_preserved(install_client):
     captured = {}
 
     def handler(request):
@@ -439,11 +444,16 @@ def test_reasoning_logprobs_are_removed(install_client):
         "Code",
         None,
         "gpt-6-astra",
-        top_logprobs=2,
+        temperature=0.5,
+        top_p=0.9,
         include=["message.output_text.logprobs", "file_search_call.results"],
     )
-    assert "top_logprobs" not in captured
-    assert captured["include"] == ["file_search_call.results"]
+    assert captured["temperature"] == 0.5
+    assert captured["top_p"] == 0.9
+    assert captured["include"] == [
+        "message.output_text.logprobs",
+        "file_search_call.results",
+    ]
 
 
 @pytest.mark.parametrize(
@@ -454,3 +464,39 @@ def test_thinking_without_visible_text_raises(install_client, provider, model):
     install_client(provider, lambda _: mock_response(200, json=response))
     with pytest.raises(ValueError, match="no text"):
         backend.query("Code", None, model)
+
+
+@pytest.mark.parametrize("provider", ["openai", "anthropic"])
+def test_explicit_provider_accepts_arbitrary_model_id(
+    install_client, provider, monkeypatch
+):
+    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+    captured = {}
+    model = "deployment-custom-name"
+
+    def handler(request):
+        captured.update(json.loads(request.content))
+        return mock_response(
+            200,
+            json=provider_response(provider, model, task_metric_func_spec, CASES[1][1]),
+        )
+
+    install_client(provider, handler)
+    assert (
+        backend.query(
+            "Choose RMSE",
+            None,
+            model,
+            provider=provider,
+            func_spec=task_metric_func_spec,
+        )
+        == CASES[1][1]
+    )
+    assert captured["model"] == model
+    assert "provider" not in captured
+    assert "temperature" not in captured
+
+
+def test_invalid_explicit_provider():
+    with pytest.raises(ValueError, match="Unknown provider"):
+        backend.query("Code", None, "custom", provider="unknown")

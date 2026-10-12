@@ -25,16 +25,6 @@ ANTHROPIC_MODEL_ALIASES = {
 }
 
 
-# Verified model IDs; older models retain their sampling and forced-tool behavior.
-ADAPTIVE_MODELS = {
-    "claude-fable-5-1",
-    "claude-opus-5-5",
-    "claude-sonnet-5-5",
-    "claude-haiku-5-5",
-}
-AUTO_TOOL_MODELS = ADAPTIVE_MODELS - {"claude-haiku-5-5"}
-
-
 @once
 def _setup_anthropic_client():
     global _client
@@ -75,7 +65,7 @@ def query(
         for parameter in ("temperature", "top_p", "top_k")
         if parameter in filtered_kwargs
     }
-    if model_name not in ADAPTIVE_MODELS and sampling:
+    if sampling:
         # New SDKs removed these named arguments; older models still accept them.
         filtered_kwargs["extra_body"] = {
             **filtered_kwargs.get("extra_body", {}),
@@ -84,16 +74,13 @@ def query(
 
     if func_spec is not None:
         filtered_kwargs["tools"] = [func_spec.as_anthropic_tool_dict]
-        if model_name in AUTO_TOOL_MODELS:
-            filtered_kwargs["tool_choice"] = {"type": "auto"}
-            instruction = (
-                f"Return your answer by calling the {func_spec.name} tool exactly once."
-            )
-            system_message = (
-                f"{system_message}\n\n{instruction}" if system_message else instruction
-            )
-        else:
-            filtered_kwargs["tool_choice"] = func_spec.anthropic_tool_choice_dict
+        filtered_kwargs["tool_choice"] = {"type": "auto"}
+        instruction = (
+            f"Return your answer by calling the {func_spec.name} tool exactly once."
+        )
+        system_message = (
+            f"{system_message}\n\n{instruction}" if system_message else instruction
+        )
 
     # Anthropic doesn't allow not having user messages
     # if we only have system msg -> use it as user msg

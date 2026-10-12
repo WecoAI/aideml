@@ -79,22 +79,6 @@ def query(
                 **filtered_kwargs.get("reasoning", {}),
                 "effort": effort,
             }
-        is_reasoning_model = (
-            re.match(r"^(o\d|gpt-[56](?:[.-]|$))", model_name)
-            or model_name == "codex-mini-latest"
-        )
-        if (
-            is_reasoning_model
-            and filtered_kwargs.get("reasoning", {}).get("effort") != "none"
-        ):
-            for parameter in ("temperature", "top_p", "top_logprobs"):
-                filtered_kwargs.pop(parameter, None)
-            if "include" in filtered_kwargs:
-                filtered_kwargs["include"] = [
-                    item
-                    for item in filtered_kwargs["include"]
-                    if item != "message.output_text.logprobs"
-                ]
         for message in messages:
             message["content"] = [{"type": "input_text", "text": message["content"]}]
         if func_spec is not None:

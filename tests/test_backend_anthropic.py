@@ -47,4 +47,5 @@ def test_anthropic_supports_arbitrary_function_specs(monkeypatch):
 
     assert output == {"lower_is_better": True}
     assert captured["tools"] == [func_spec.as_anthropic_tool_dict]
-    assert captured["tool_choice"] == func_spec.anthropic_tool_choice_dict
+    assert captured["tool_choice"] == {"type": "auto"}
+    assert func_spec.name in captured["messages"][0]["content"]
