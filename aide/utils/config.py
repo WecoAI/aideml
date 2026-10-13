@@ -30,6 +30,20 @@ logger.setLevel(logging.WARNING)
 class StageConfig:
     model: str
     temp: float | None
+    max_tokens: int | None = None
+    reasoning_effort: str | None = None
+    provider: str | None = None
+
+
+def stage_query_kwargs(stage: StageConfig) -> dict:
+    """Keep optional settings compatible with older stage configs."""
+    return {
+        "model": stage.model,
+        "provider": getattr(stage, "provider", None),
+        "temperature": stage.temp,
+        "max_tokens": getattr(stage, "max_tokens", None),
+        "reasoning_effort": getattr(stage, "reasoning_effort", None),
+    }
 
 
 @dataclass

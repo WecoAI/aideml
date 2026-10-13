@@ -28,7 +28,10 @@ generate_report: True
 # LLM settings for final report from journal
 report:
   model: gpt-4.1
-  temp: 1.0
+  provider: null # infer from model name; set explicitly for custom model IDs
+  temp: null # provider default; set only when the model supports sampling
+  max_tokens: 4096
+  reasoning_effort: null
 
 # agent hyperparams
 agent:
@@ -48,12 +51,18 @@ agent:
   # LLM settings for coding
   code:
     model: o4-mini
-    temp: 0.5
+    provider: null
+    temp: null # provider default; set only when the model supports sampling
+    max_tokens: null
+    reasoning_effort: null
 
   # LLM settings for evaluating program output / tracebacks
   feedback:
     model: gpt-4.1-mini
-    temp: 0.5
+    provider: null
+    temp: null # provider default; set only when the model supports sampling
+    max_tokens: null
+    reasoning_effort: null
 
   # hyperparameters for the tree search
   search:

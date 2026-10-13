@@ -1,0 +1,53 @@
+name: Live house-price E2E
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'aide/**'
+      - 'tests/e2e/**'
+      - 'requirements.txt'
+      - '.github/workflows/live-e2e.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-house-prices
+  cancel-in-progress: false
+
+jobs:
+  house-prices:
+    if: github.event_name == 'workflow_dispatch' || vars.AIDE_RUN_LIVE_E2E == '1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: '3.11'
+      - name: Install CPU test dependencies
+        run: |
+          uv venv
+          uv pip install -r tests/e2e/requirements.txt
+      - name: Run five optimization steps with real APIs
+        env:
+          AIDE_RUN_LIVE_E2E: '1'
+          AIDE_E2E_CODE_PROVIDER: ${{ vars.AIDE_E2E_CODE_PROVIDER }}
+          AIDE_E2E_CODE_MODEL: ${{ vars.AIDE_E2E_CODE_MODEL }}
+          AIDE_E2E_CODE_EFFORT: ${{ vars.AIDE_E2E_CODE_EFFORT }}
+          AIDE_E2E_FEEDBACK_PROVIDER: ${{ vars.AIDE_E2E_FEEDBACK_PROVIDER }}
+          AIDE_E2E_FEEDBACK_MODEL: ${{ vars.AIDE_E2E_FEEDBACK_MODEL }}
+          AIDE_E2E_FEEDBACK_EFFORT: ${{ vars.AIDE_E2E_FEEDBACK_EFFORT }}
+          AIDE_E2E_OUTPUT_DIR: logs/live-e2e
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: uv run python -m pytest -q -s tests/e2e/test_house_prices_live.py
+      - name: Save run artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: house-price-e2e-${{ github.run_id }}
+          path: logs/live-e2e
+          retention-days: 14

@@ -112,7 +112,7 @@ The UI shows live logs, the solution tree, and the best code.
 
 ```bash
 # Choose a different coding model and run 50 steps
-aide agent.code.model="claude-4-sonnet" \
+aide agent.code.model="$MODEL_ID" agent.code.provider=anthropic \
      agent.steps=50 \
      data_dir=… goal=… eval=…
 ```
@@ -121,9 +121,72 @@ Common flags
 
 | Flag | Purpose | Default |
 | --- | --- | --- |
-| `agent.code.model` | LLM used to write code | `gpt-4-turbo` |
+| `agent.code.model` | LLM used to write code | `o4-mini` |
+| `agent.feedback.model` | LLM used for execution review and startup metric selection | `gpt-4.1-mini` |
+| `agent.code.provider` | Backend override (`openai`, `anthropic`, `gemini`, or `openrouter`) | `null` (infer from model name) |
+| `agent.code.temp` | Sampling temperature, when supported by the model | `null` (provider default) |
+| `agent.code.reasoning_effort` | Reasoning effort, when supported by the model | `null` (provider default) |
+| `agent.code.max_tokens` | Output budget, including reasoning tokens | `null` (backend default) |
 | `agent.steps` | Improvement iterations | `20` |
 | `agent.search.num_drafts` | Drafts per step | `5` |
+
+### OpenAI and Anthropic configuration
+
+Model IDs are passed through to the provider. There is no supported-model list;
+choose any model available to your account that supports the stage's requests.
+Set the provider explicitly when your model ID does not follow the usual naming
+convention. For example, set `MODEL_ID` to your chosen model, then run:
+
+```bash
+aide agent.code.provider=openai agent.code.model="$MODEL_ID" \
+     agent.code.max_tokens=16384 \
+     data_dir=… goal=… eval=…
+
+# Set ANTHROPIC_API_KEY to use Anthropic.
+aide agent.code.provider=anthropic agent.code.model="$MODEL_ID" \
+     agent.code.max_tokens=16384 \
+     data_dir=… goal=… eval=…
+```
+
+The same `provider`, `temp`, `reasoning_effort`, and `max_tokens` options apply to
+`agent.feedback` and `report`. Each stage keeps its existing default model.
+Sampling temperature and reasoning effort default to `null`, leaving them to the
+provider. Explicit settings are forwarded; the API reports unsupported settings.
+When switching models with an older configuration, set each stage's `temp=null`
+unless the new model supports its configured temperature.
+
+Reasoning can consume part of the output budget. Anthropic defaults to 4096 tokens
+when no budget is set; the report stage also keeps its 4096-token default. OpenAI
+otherwise uses its API default. Choose budgets and effort values supported by your
+model. Model access and provider-side limits still apply.
+
+Provider contracts checked against official documentation on **12 October 2026**:
+
+- [OpenAI Responses](https://developers.openai.com/api/docs/guides/reasoning)
+  handles official OpenAI requests, including tool results. AIDE translates
+  `max_tokens` and `reasoning_effort` into Responses options. Non-strict tools
+  preserve optional `FunctionSpec` fields; returned arguments are validated locally.
+  Existing custom endpoints configured through `OPENAI_BASE_URL` use Chat
+  Completions for nonstandard model IDs.
+- [Anthropic Messages](https://platform.claude.com/docs/en/api/messages/create)
+  uses automatic tool selection with an instruction to call the required tool
+  exactly once. AIDE reads text and tool blocks by type, skipping thinking blocks.
+  Automatic selection is best effort: missing, wrong, multiple, or invalid tool
+  results raise an error. Explicit sampling settings use the SDK's `extra_body`
+  option because [Anthropic SDK v1](https://github.com/anthropics/anthropic-sdk-python/blob/main/MIGRATION.md)
+  removed the named sampling arguments.
+
+The SDK requirements are `openai>=1.69.0` (Responses support) and
+`anthropic>=0.86.0` (Messages tools and `output_config.effort`). Transient failures
+get at most five backend attempts and then raise the provider error. Structured
+requests raise on missing tool calls instead of silently falling back to text;
+Responses that do not complete and Anthropic truncations or refusals also raise.
+The startup metric selector retains its existing fallback if inference fails.
+
+Regression tests use real SDKs with mocked HTTP to check serialization, output
+parsing, tool schemas, custom model IDs, stage forwarding, and bounded retries.
+Live API checks are run separately before merging; those results apply to the
+models and requests exercised, not every model a provider may offer.
 
 ---
 
@@ -193,6 +256,44 @@ docker run -it --rm \
 git clone https://github.com/WecoAI/aideml.git
 cd aideml && pip install -e .
 ```
+
+### Live end-to-end test
+
+The opt-in house-price test runs five optimization steps on the bundled Ames data
+using real APIs: one draft followed by improvement or debugging steps, execution
+review, and a final report. It checks saved out-of-fold predictions against journal
+metrics, verifies every successful step's submission, and checks the selected best
+solution. A passing run requires at least two valid solutions and an improvement
+attempt; a lower score than the first solution is not guaranteed.
+
+From the repository root, with provider credentials already in your environment:
+
+```bash
+uv venv
+uv pip install -r tests/e2e/requirements.txt
+AIDE_RUN_LIVE_E2E=1 \
+AIDE_E2E_CODE_PROVIDER=openai AIDE_E2E_CODE_MODEL="$CODE_MODEL" \
+AIDE_E2E_FEEDBACK_PROVIDER=anthropic AIDE_E2E_FEEDBACK_MODEL="$FEEDBACK_MODEL" \
+AIDE_E2E_OUTPUT_DIR=logs/live-e2e \
+uv run python -m pytest -q -s tests/e2e/test_house_prices_live.py
+```
+
+Choose model IDs available to your account; either stage can use OpenAI or
+Anthropic. The report uses the coding model. Optional `AIDE_E2E_CODE_EFFORT` and
+`AIDE_E2E_FEEDBACK_EFFORT` set reasoning effort. Ordinary test runs skip this test.
+The live run allows at most 24 API calls, uses one provider attempt per call, and
+limits each generated training program to 120 seconds. Artifacts include the
+journal, code, per-step predictions, report, and a receipt with actual model IDs
+and token usage.
+
+The **Live house-price E2E** GitHub Actions workflow supports manual runs and
+automatic runs after relevant changes reach `main`. Configure repository secrets
+`OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY` for the chosen providers, plus the four
+`AIDE_E2E_*_PROVIDER` / `AIDE_E2E_*_MODEL` repository variables shown above.
+Set the repository variable `AIDE_RUN_LIVE_E2E=1` to enable automatic runs; effort
+variables are optional. The workflow saves artifacts for 14 days and has a
+25-minute timeout. Credentials are only supplied to the live test step, and
+provider API keys are removed from the training subprocess environment.
 
 # Citation
 

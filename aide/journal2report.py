@@ -1,6 +1,6 @@
 from .backend import query
 from .journal import Journal
-from .utils.config import StageConfig
+from .utils.config import StageConfig, stage_query_kwargs
 
 
 def journal2report(journal: Journal, task_desc: dict, rcfg: StageConfig):
@@ -25,7 +25,8 @@ def journal2report(journal: Journal, task_desc: dict, rcfg: StageConfig):
     return query(
         system_message=system_prompt_dict,
         user_message=context_prompt,
-        model=rcfg.model,
-        temperature=rcfg.temp,
-        max_tokens=4096,
+        **(
+            stage_query_kwargs(rcfg)
+            | {"max_tokens": getattr(rcfg, "max_tokens", None) or 4096}
+        ),
     )

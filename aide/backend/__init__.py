@@ -38,6 +38,7 @@ def query(
     temperature: float | None = None,
     max_tokens: int | None = None,
     func_spec: FunctionSpec | None = None,
+    provider: str | None = None,
     **model_kwargs,
 ) -> OutputType:
     """
@@ -48,6 +49,7 @@ def query(
         system_message (PromptType | None): Uncompiled system message (will generate a message following the OpenAI/Anthropic format)
         user_message (PromptType | None): Uncompiled user message (will generate a message following the OpenAI/Anthropic format)
         model (str): string identifier for the model to use (e.g. "gpt-4-turbo")
+        provider (str | None, optional): Explicit backend; otherwise inferred from the model name.
         temperature (float | None, optional): Temperature to sample at. Defaults to the model-specific default.
         max_tokens (int | None, optional): Maximum number of tokens to generate. Defaults to the model-specific max tokens.
         func_spec (FunctionSpec | None, optional): Optional FunctionSpec object defining a function call. If given, the return value will be a dict.
@@ -62,7 +64,9 @@ def query(
         "max_tokens": max_tokens,
     }
 
-    provider = determine_provider(model)
+    provider = provider or determine_provider(model)
+    if provider not in provider_to_query_func:
+        raise ValueError(f"Unknown provider: {provider}")
     query_func = provider_to_query_func[provider]
     output, req_time, in_tok_count, out_tok_count, info = query_func(
         system_message=compile_prompt_to_md(system_message) if system_message else None,

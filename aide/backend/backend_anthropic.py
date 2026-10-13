@@ -6,6 +6,7 @@ import time
 from .utils import FunctionSpec, OutputType, opt_messages_to_list, backoff_create
 from funcy import notnone, once, select_values
 import anthropic
+import jsonschema
 
 logger = logging.getLogger("aide")
 
@@ -53,10 +54,33 @@ def query(
         filtered_kwargs["model"] = model_name
         logger.debug(f"Using aliased model name: {model_name}")
 
+    effort = filtered_kwargs.pop("reasoning_effort", None)
+    if effort is not None:
+        filtered_kwargs["output_config"] = {
+            **filtered_kwargs.get("output_config", {}),
+            "effort": effort,
+        }
+    sampling = {
+        parameter: filtered_kwargs.pop(parameter)
+        for parameter in ("temperature", "top_p", "top_k")
+        if parameter in filtered_kwargs
+    }
+    if sampling:
+        # New SDKs removed these named arguments; older models still accept them.
+        filtered_kwargs["extra_body"] = {
+            **filtered_kwargs.get("extra_body", {}),
+            **sampling,
+        }
+
     if func_spec is not None:
         filtered_kwargs["tools"] = [func_spec.as_anthropic_tool_dict]
-        # Force tool use
-        filtered_kwargs["tool_choice"] = func_spec.anthropic_tool_choice_dict
+        filtered_kwargs["tool_choice"] = {"type": "auto"}
+        instruction = (
+            f"Return your answer by calling the {func_spec.name} tool exactly once."
+        )
+        system_message = (
+            f"{system_message}\n\n{instruction}" if system_message else instruction
+        )
 
     # Anthropic doesn't allow not having user messages
     # if we only have system msg -> use it as user msg
@@ -80,26 +104,24 @@ def query(
     )
     req_time = time.time() - t0
 
-    # Handle tool calls if present
-    if (
-        func_spec is not None
-        and "tools" in filtered_kwargs
-        and len(message.content) > 0
-        and message.content[0].type == "tool_use"
+    if message.stop_reason in (
+        "max_tokens",
+        "refusal",
+        "model_context_window_exceeded",
     ):
-        block = message.content[0]  # This is a "ToolUseBlock"
-        # block has attributes: type, id, name, input
-        assert (
-            block.name == func_spec.name
-        ), f"Function name mismatch: expected {func_spec.name}, got {block.name}"
-        output = block.input  # Anthropic calls the parameters "input"
+        raise ValueError(f"Anthropic response did not complete: {message.stop_reason}")
+    if func_spec is not None:
+        blocks = [block for block in message.content if block.type == "tool_use"]
+        if len(blocks) != 1 or blocks[0].name != func_spec.name:
+            raise ValueError(f"Expected one call to {func_spec.name}")
+        output = blocks[0].input
+        jsonschema.validate(output, func_spec.json_schema)
     else:
-        # For non-tool responses, ensure we have text content
-        assert len(message.content) == 1, "Expected single content item"
-        assert (
-            message.content[0].type == "text"
-        ), f"Expected text response, got {message.content[0].type}"
-        output = message.content[0].text
+        output = "".join(
+            block.text for block in message.content if block.type == "text"
+        )
+        if not output:
+            raise ValueError("Anthropic returned no text")
 
     in_tokens = message.usage.input_tokens
     out_tokens = message.usage.output_tokens
