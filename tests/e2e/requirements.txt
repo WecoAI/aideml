@@ -1,0 +1,22 @@
+# Small CPU environment for the live house-price test; reuse project constraints.
+-c ../../requirements.txt
+anthropic
+backoff
+black
+coolname
+dataclasses_json
+funcy
+genson
+humanize
+igraph
+jsonschema
+numpy
+omegaconf
+openai
+pandas
+pytest
+python-dotenv
+rich
+scikit-learn
+scipy
+shutup

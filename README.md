@@ -257,6 +257,44 @@ git clone https://github.com/WecoAI/aideml.git
 cd aideml && pip install -e .
 ```
 
+### Live end-to-end test
+
+The opt-in house-price test runs five optimization steps on the bundled Ames data
+using real APIs: one draft followed by improvement or debugging steps, execution
+review, and a final report. It checks saved out-of-fold predictions against journal
+metrics, verifies every successful step's submission, and checks the selected best
+solution. A passing run requires at least two valid solutions and an improvement
+attempt; a lower score than the first solution is not guaranteed.
+
+From the repository root, with provider credentials already in your environment:
+
+```bash
+uv venv
+uv pip install -r tests/e2e/requirements.txt
+AIDE_RUN_LIVE_E2E=1 \
+AIDE_E2E_CODE_PROVIDER=openai AIDE_E2E_CODE_MODEL="$CODE_MODEL" \
+AIDE_E2E_FEEDBACK_PROVIDER=anthropic AIDE_E2E_FEEDBACK_MODEL="$FEEDBACK_MODEL" \
+AIDE_E2E_OUTPUT_DIR=logs/live-e2e \
+uv run python -m pytest -q -s tests/e2e/test_house_prices_live.py
+```
+
+Choose model IDs available to your account; either stage can use OpenAI or
+Anthropic. The report uses the coding model. Optional `AIDE_E2E_CODE_EFFORT` and
+`AIDE_E2E_FEEDBACK_EFFORT` set reasoning effort. Ordinary test runs skip this test.
+The live run allows at most 24 API calls, uses one provider attempt per call, and
+limits each generated training program to 120 seconds. Artifacts include the
+journal, code, per-step predictions, report, and a receipt with actual model IDs
+and token usage.
+
+The **Live house-price E2E** GitHub Actions workflow supports manual runs and
+automatic runs after relevant changes reach `main`. Configure repository secrets
+`OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY` for the chosen providers, plus the four
+`AIDE_E2E_*_PROVIDER` / `AIDE_E2E_*_MODEL` repository variables shown above.
+Set the repository variable `AIDE_RUN_LIVE_E2E=1` to enable automatic runs; effort
+variables are optional. The workflow saves artifacts for 14 days and has a
+25-minute timeout. Credentials are only supplied to the live test step, and
+provider API keys are removed from the training subprocess environment.
+
 # Citation
 
 If you use AIDE in your work, please cite the following paper:
