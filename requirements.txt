@@ -78,7 +78,7 @@ fastai
 gym
 optuna
 transformers
-datasets==2.1.0
+datasets==5.0.1
 torchmetrics
 pytorch-lightning
 sympy
@@ -87,7 +87,8 @@ torchinfo
 pdf2image
 PyPDF
 pyocr
-pyarrow
+# PyArrow 26 requires NumPy 2; retain compatibility with the NumPy 1.26 pin.
+pyarrow>=21.0.0,<26.0.0
 xlrd
 backoff
 streamlit~=1.54.0
