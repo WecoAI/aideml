@@ -12,10 +12,6 @@ LLM‑driven agent that writes, evaluates & improves machine‑learning code.
 <a href="https://pepy.tech/projects/aideml"><img src="https://static.pepy.tech/badge/aideml" alt="PyPI Downloads"></a>&ensp;
 </p>
 
-<p align="center">
-<a href="https://docs.weco.ai/cli/getting-started?utm_source=aidemlrepo" target="_blank"><strong>Use in Production? Try Weco →</strong></a>
-</p>
-
 # What Is AIDE ML?
 
 **AIDE ML is the open‑source “reference build” of the AIDE algorithm**, a tree‑search agent that autonomously drafts, debugs and benchmarks code until a user‑defined metric is maximised (or minimised). It ships as a *research‑friendly* Python package with batteries‑included utilities (CLI, visualisation, config presets) so that academics and engineer‑researchers can **replicate the paper, test new ideas, or prototyping ML pipelines**.
@@ -26,7 +22,6 @@ LLM‑driven agent that writes, evaluates & improves machine‑learning code.
 | --- | --- | --- |
 | **AIDE *algorithm*** | LLM‑guided agentic tree search in the space of code. | Described in our [paper](https://arxiv.org/abs/2502.13138). |
 | **AIDE ML *repo* (this repo)** | Lean implementation for experimentation & extension. | `pip install aideml` |
-| **Weco *product*** | The platform generalizes AIDE's capabilities to broader code optimization scenarios, providing experiment tracking and enhanced user control. | [weco.ai](https://weco.ai?utm_source=aidemlrepo) |
 
 ### Who should use it?
 
